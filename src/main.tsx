@@ -6,6 +6,7 @@ import '@/styles/globals.css'
 // Import the generated route tree
 import { routeTree } from './routeTree.gen'
 import { Toaster } from 'sonner'
+import { AuthProvider } from './providers/AuthProvider'
 
 // Create a new router instance
 const router = createRouter({ routeTree })
@@ -23,8 +24,10 @@ if (!rootElement.innerHTML) {
     const root = ReactDOM.createRoot(rootElement)
     root.render(
         <StrictMode>
-            <Toaster position='top-center' richColors />
-            <RouterProvider router={router} />
+            <AuthProvider>
+                <Toaster position='top-center' richColors />
+                <RouterProvider router={router} />
+            </AuthProvider>
         </StrictMode>
     )
 }

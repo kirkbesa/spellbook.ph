@@ -9,149 +9,228 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as _authRouteImport } from './routes/__auth'
-import { Route as AppRouteRouteImport } from './routes/_app/route'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as _authRegisterRouteImport } from './routes/__auth/register'
-import { Route as _authLoginRouteImport } from './routes/__auth/login'
-import { Route as _authAuthCallbackRouteImport } from './routes/__auth/auth/callback'
+import { Route as AuthRouteImport } from './routes/_auth'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as AuthRegisterRouteImport } from './routes/_auth/register'
+import { Route as AuthLoginRouteImport } from './routes/_auth/login'
+import { Route as AppProfileIndexRouteImport } from './routes/_app/profile/index'
+import { Route as AppChatsIndexRouteImport } from './routes/_app/chats/index'
+import { Route as AppBindersIndexRouteImport } from './routes/_app/binders/index'
+import { Route as AppHomeIndexRouteImport } from './routes/_app/_home/index'
+import { Route as AuthAuthCallbackRouteImport } from './routes/_auth/auth/callback'
 
-const _authRoute = _authRouteImport.update({
-  id: '/__auth',
+const AuthRoute = AuthRouteImport.update({
+  id: '/_auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppRouteRoute = AppRouteRouteImport.update({
+const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const _authRegisterRoute = _authRegisterRouteImport.update({
+const AuthRegisterRoute = AuthRegisterRouteImport.update({
   id: '/register',
   path: '/register',
-  getParentRoute: () => _authRoute,
+  getParentRoute: () => AuthRoute,
 } as any)
-const _authLoginRoute = _authLoginRouteImport.update({
+const AuthLoginRoute = AuthLoginRouteImport.update({
   id: '/login',
   path: '/login',
-  getParentRoute: () => _authRoute,
+  getParentRoute: () => AuthRoute,
 } as any)
-const _authAuthCallbackRoute = _authAuthCallbackRouteImport.update({
+const AppProfileIndexRoute = AppProfileIndexRouteImport.update({
+  id: '/profile/',
+  path: '/profile/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppChatsIndexRoute = AppChatsIndexRouteImport.update({
+  id: '/chats/',
+  path: '/chats/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppBindersIndexRoute = AppBindersIndexRouteImport.update({
+  id: '/binders/',
+  path: '/binders/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppHomeIndexRoute = AppHomeIndexRouteImport.update({
+  id: '/_home/',
+  path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AuthAuthCallbackRoute = AuthAuthCallbackRouteImport.update({
   id: '/auth/callback',
   path: '/auth/callback',
-  getParentRoute: () => _authRoute,
+  getParentRoute: () => AuthRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/login': typeof _authLoginRoute
-  '/register': typeof _authRegisterRoute
-  '/auth/callback': typeof _authAuthCallbackRoute
+  '/login': typeof AuthLoginRoute
+  '/register': typeof AuthRegisterRoute
+  '/auth/callback': typeof AuthAuthCallbackRoute
+  '/': typeof AppHomeIndexRoute
+  '/binders': typeof AppBindersIndexRoute
+  '/chats': typeof AppChatsIndexRoute
+  '/profile': typeof AppProfileIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/login': typeof _authLoginRoute
-  '/register': typeof _authRegisterRoute
-  '/auth/callback': typeof _authAuthCallbackRoute
+  '/login': typeof AuthLoginRoute
+  '/register': typeof AuthRegisterRoute
+  '/auth/callback': typeof AuthAuthCallbackRoute
+  '/': typeof AppHomeIndexRoute
+  '/binders': typeof AppBindersIndexRoute
+  '/chats': typeof AppChatsIndexRoute
+  '/profile': typeof AppProfileIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/_app': typeof AppRouteRoute
-  '/__auth': typeof _authRouteWithChildren
-  '/__auth/login': typeof _authLoginRoute
-  '/__auth/register': typeof _authRegisterRoute
-  '/__auth/auth/callback': typeof _authAuthCallbackRoute
+  '/_app': typeof AppRouteWithChildren
+  '/_auth': typeof AuthRouteWithChildren
+  '/_auth/login': typeof AuthLoginRoute
+  '/_auth/register': typeof AuthRegisterRoute
+  '/_auth/auth/callback': typeof AuthAuthCallbackRoute
+  '/_app/_home/': typeof AppHomeIndexRoute
+  '/_app/binders/': typeof AppBindersIndexRoute
+  '/_app/chats/': typeof AppChatsIndexRoute
+  '/_app/profile/': typeof AppProfileIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/register' | '/auth/callback'
+  fullPaths:
+    | '/login'
+    | '/register'
+    | '/auth/callback'
+    | '/'
+    | '/binders'
+    | '/chats'
+    | '/profile'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/register' | '/auth/callback'
+  to:
+    | '/login'
+    | '/register'
+    | '/auth/callback'
+    | '/'
+    | '/binders'
+    | '/chats'
+    | '/profile'
   id:
     | '__root__'
-    | '/'
     | '/_app'
-    | '/__auth'
-    | '/__auth/login'
-    | '/__auth/register'
-    | '/__auth/auth/callback'
+    | '/_auth'
+    | '/_auth/login'
+    | '/_auth/register'
+    | '/_auth/auth/callback'
+    | '/_app/_home/'
+    | '/_app/binders/'
+    | '/_app/chats/'
+    | '/_app/profile/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  AppRouteRoute: typeof AppRouteRoute
-  _authRoute: typeof _authRouteWithChildren
+  AppRoute: typeof AppRouteWithChildren
+  AuthRoute: typeof AuthRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/__auth': {
-      id: '/__auth'
+    '/_auth': {
+      id: '/_auth'
       path: ''
       fullPath: ''
-      preLoaderRoute: typeof _authRouteImport
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app': {
       id: '/_app'
       path: ''
       fullPath: ''
-      preLoaderRoute: typeof AppRouteRouteImport
+      preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/__auth/register': {
-      id: '/__auth/register'
+    '/_auth/register': {
+      id: '/_auth/register'
       path: '/register'
       fullPath: '/register'
-      preLoaderRoute: typeof _authRegisterRouteImport
-      parentRoute: typeof _authRoute
+      preLoaderRoute: typeof AuthRegisterRouteImport
+      parentRoute: typeof AuthRoute
     }
-    '/__auth/login': {
-      id: '/__auth/login'
+    '/_auth/login': {
+      id: '/_auth/login'
       path: '/login'
       fullPath: '/login'
-      preLoaderRoute: typeof _authLoginRouteImport
-      parentRoute: typeof _authRoute
+      preLoaderRoute: typeof AuthLoginRouteImport
+      parentRoute: typeof AuthRoute
     }
-    '/__auth/auth/callback': {
-      id: '/__auth/auth/callback'
+    '/_app/profile/': {
+      id: '/_app/profile/'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof AppProfileIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/chats/': {
+      id: '/_app/chats/'
+      path: '/chats'
+      fullPath: '/chats'
+      preLoaderRoute: typeof AppChatsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/binders/': {
+      id: '/_app/binders/'
+      path: '/binders'
+      fullPath: '/binders'
+      preLoaderRoute: typeof AppBindersIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/_home/': {
+      id: '/_app/_home/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof AppHomeIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_auth/auth/callback': {
+      id: '/_auth/auth/callback'
       path: '/auth/callback'
       fullPath: '/auth/callback'
-      preLoaderRoute: typeof _authAuthCallbackRouteImport
-      parentRoute: typeof _authRoute
+      preLoaderRoute: typeof AuthAuthCallbackRouteImport
+      parentRoute: typeof AuthRoute
     }
   }
 }
 
-interface _authRouteChildren {
-  _authLoginRoute: typeof _authLoginRoute
-  _authRegisterRoute: typeof _authRegisterRoute
-  _authAuthCallbackRoute: typeof _authAuthCallbackRoute
+interface AppRouteChildren {
+  AppHomeIndexRoute: typeof AppHomeIndexRoute
+  AppBindersIndexRoute: typeof AppBindersIndexRoute
+  AppChatsIndexRoute: typeof AppChatsIndexRoute
+  AppProfileIndexRoute: typeof AppProfileIndexRoute
 }
 
-const _authRouteChildren: _authRouteChildren = {
-  _authLoginRoute: _authLoginRoute,
-  _authRegisterRoute: _authRegisterRoute,
-  _authAuthCallbackRoute: _authAuthCallbackRoute,
+const AppRouteChildren: AppRouteChildren = {
+  AppHomeIndexRoute: AppHomeIndexRoute,
+  AppBindersIndexRoute: AppBindersIndexRoute,
+  AppChatsIndexRoute: AppChatsIndexRoute,
+  AppProfileIndexRoute: AppProfileIndexRoute,
 }
 
-const _authRouteWithChildren = _authRoute._addFileChildren(_authRouteChildren)
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
+interface AuthRouteChildren {
+  AuthLoginRoute: typeof AuthLoginRoute
+  AuthRegisterRoute: typeof AuthRegisterRoute
+  AuthAuthCallbackRoute: typeof AuthAuthCallbackRoute
+}
+
+const AuthRouteChildren: AuthRouteChildren = {
+  AuthLoginRoute: AuthLoginRoute,
+  AuthRegisterRoute: AuthRegisterRoute,
+  AuthAuthCallbackRoute: AuthAuthCallbackRoute,
+}
+
+const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  AppRouteRoute: AppRouteRoute,
-  _authRoute: _authRouteWithChildren,
+  AppRoute: AppRouteWithChildren,
+  AuthRoute: AuthRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

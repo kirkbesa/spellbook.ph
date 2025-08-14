@@ -19,6 +19,10 @@ export default tseslint.config([
             ecmaVersion: 2020,
             globals: globals.browser,
         },
+        rules: {
+            // Allow multiple exports
+            'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+        },
     },
     // Ignore Shadcn Components
     {
