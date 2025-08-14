@@ -20,6 +20,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { Trash2, Plus, Minus, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import Loading from '@/components/layout/Loading'
 
 type ScryfallImageUris = {
     small?: string
@@ -115,7 +116,7 @@ const ScryfallSearchBinder: React.FC = () => {
                 if (!res.ok) throw new Error('Scryfall search failed')
                 const data = await res.json()
                 const cards: ScryfallCard[] = Array.isArray(data.data) ? data.data : []
-                setSuggestions(cards.slice(0, 12)) // limit suggestions
+                setSuggestions(cards.slice(0, 50)) // limit suggestions
             } catch (e) {
                 console.error(e)
                 setSuggestions([])
@@ -176,7 +177,7 @@ const ScryfallSearchBinder: React.FC = () => {
     const totalUsd = binder.reduce((sum, it) => sum + it.priceUsd * it.quantity, 0)
 
     return (
-        <div className='w-full max-w-5xl space-y-6'>
+        <div className='w-full space-y-6'>
             <div className='flex flex-col gap-2'>
                 <h2 className='text-2xl font-semibold tracking-tight'>Binder Builder (Demo)</h2>
                 <p className='text-sm text-muted-foreground'>

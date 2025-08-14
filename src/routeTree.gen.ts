@@ -12,7 +12,9 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as _authRouteImport } from './routes/__auth'
 import { Route as AppRouteRouteImport } from './routes/_app/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as _authRegisterRouteImport } from './routes/__auth/register'
 import { Route as _authLoginRouteImport } from './routes/__auth/login'
+import { Route as _authAuthCallbackRouteImport } from './routes/__auth/auth/callback'
 
 const _authRoute = _authRouteImport.update({
   id: '/__auth',
@@ -27,19 +29,33 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const _authRegisterRoute = _authRegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => _authRoute,
+} as any)
 const _authLoginRoute = _authLoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => _authRoute,
+} as any)
+const _authAuthCallbackRoute = _authAuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
   getParentRoute: () => _authRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof _authLoginRoute
+  '/register': typeof _authRegisterRoute
+  '/auth/callback': typeof _authAuthCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof _authLoginRoute
+  '/register': typeof _authRegisterRoute
+  '/auth/callback': typeof _authAuthCallbackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -47,13 +63,22 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteRoute
   '/__auth': typeof _authRouteWithChildren
   '/__auth/login': typeof _authLoginRoute
+  '/__auth/register': typeof _authRegisterRoute
+  '/__auth/auth/callback': typeof _authAuthCallbackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login'
+  fullPaths: '/' | '/login' | '/register' | '/auth/callback'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login'
-  id: '__root__' | '/' | '/_app' | '/__auth' | '/__auth/login'
+  to: '/' | '/login' | '/register' | '/auth/callback'
+  id:
+    | '__root__'
+    | '/'
+    | '/_app'
+    | '/__auth'
+    | '/__auth/login'
+    | '/__auth/register'
+    | '/__auth/auth/callback'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -85,6 +110,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/__auth/register': {
+      id: '/__auth/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof _authRegisterRouteImport
+      parentRoute: typeof _authRoute
+    }
     '/__auth/login': {
       id: '/__auth/login'
       path: '/login'
@@ -92,15 +124,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof _authLoginRouteImport
       parentRoute: typeof _authRoute
     }
+    '/__auth/auth/callback': {
+      id: '/__auth/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof _authAuthCallbackRouteImport
+      parentRoute: typeof _authRoute
+    }
   }
 }
 
 interface _authRouteChildren {
   _authLoginRoute: typeof _authLoginRoute
+  _authRegisterRoute: typeof _authRegisterRoute
+  _authAuthCallbackRoute: typeof _authAuthCallbackRoute
 }
 
 const _authRouteChildren: _authRouteChildren = {
   _authLoginRoute: _authLoginRoute,
+  _authRegisterRoute: _authRegisterRoute,
+  _authAuthCallbackRoute: _authAuthCallbackRoute,
 }
 
 const _authRouteWithChildren = _authRoute._addFileChildren(_authRouteChildren)

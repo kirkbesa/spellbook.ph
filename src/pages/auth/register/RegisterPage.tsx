@@ -1,32 +1,48 @@
-// src/pages/Login.tsx
+// src/pages/Register.tsx
 import React, { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { useLogin } from '@/hooks/auth/useLogin'
-import { Link, useNavigate } from '@tanstack/react-router'
+import { useRegister } from '@/hooks/auth/useRegister'
+import { Link } from '@tanstack/react-router'
+import { toast } from 'sonner'
 import { Label } from '@/components/ui/label'
 
-export default function LoginPage() {
-    const navigate = useNavigate()
+export default function RegisterPage() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
-    const { login, loading, error, setError } = useLogin()
+    const [confirmPassword, setConfirmPassword] = useState('')
+    const { register, loading, error, setError } = useRegister()
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+        setError(null)
 
-        const { ok, error } = await login(email, password)
+        if (password !== confirmPassword) {
+            setError('Passwords do not match.')
+            return
+        }
 
-        if (error) {
-            setError(error)
-        } else if (ok) {
-            navigate({ to: '/' })
+        if (password.length < 8) {
+            setError('Password must be at least 8 characters.')
+            return
+        }
+
+        const origin = typeof window !== 'undefined' ? window.location.origin : undefined
+        const res = await register(email, password, {
+            emailRedirectTo: origin ? `${origin}/auth/callback` : undefined, // ← changed key
+        })
+
+        if (res.ok) {
+            toast.success('Check your email to confirm your account.')
+            setEmail('')
+            setPassword('')
+            setConfirmPassword('')
         }
     }
 
     return (
         <div className='min-w-md max-h-auto mx-auto mt-20 p-6 bg-white rounded-lg flex flex-col gap-6'>
-            <h1 className='text-2xl font-bold text-center'>Login</h1>
+            <h1 className='text-2xl font-bold text-center'>Create an Account</h1>
 
             <form onSubmit={handleSubmit} className='space-y-4'>
                 <div>
@@ -59,25 +75,37 @@ export default function LoginPage() {
                     />
                 </div>
 
+                <div>
+                    <Label htmlFor='confirm_password' className='block text-sm font-medium mb-1'>
+                        Confirm Password
+                    </Label>
+                    <Input
+                        id='confirm_password'
+                        type='password'
+                        placeholder='••••••••'
+                        required
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        disabled={loading}
+                    />
+                </div>
+
                 {error && (
-                    <p
-                        className={`text-sm justify-self-center ${error === 'Email not confirmed' ? 'text-amber-500' : 'text-red-500'}`}
-                        role='alert'
-                    >
+                    <p className='text-sm justify-self-center text-red-500' role='alert'>
                         {error}
                     </p>
                 )}
 
                 <Button type='submit' className='w-full' disabled={loading}>
-                    {loading ? 'Logging in…' : 'Log In'}
+                    {loading ? 'Signing Up…' : 'Sign Up'}
                 </Button>
             </form>
 
             <Link
-                to='/register'
+                to='/login'
                 className='text-xs text-muted-foreground hover:underline mx-auto cursor-pointer'
             >
-                Don&apos;t have an account?
+                Already have an account?
             </Link>
         </div>
     )
