@@ -44,7 +44,7 @@ export default function RegisterPage() {
     }
 
     return (
-        <div className='min-w-md max-h-auto mx-auto p-6 bg-white rounded-lg flex flex-col gap-6'>
+        <div className='min-w-md max-h-auto mx-auto bg-white rounded-lg flex flex-col gap-6'>
             {!showEmailConfirmation ? (
                 <>
                     <h1 className='text-2xl font-bold text-center'>Create an Account</h1>

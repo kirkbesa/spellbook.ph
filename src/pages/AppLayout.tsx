@@ -4,9 +4,9 @@ import { Outlet } from '@tanstack/react-router'
 
 const AppLayout = () => {
     return (
-        <div className='min-h-screen bg-background text-foreground'>
+        <div className='bg-background text-foreground'>
             <Nav />
-            <main className='mx-auto w-full max-w-6xl p-4'>
+            <main className='mx-auto w-full max-w-6xl py-18 px-4 h-screen'>
                 <Outlet />
             </main>
         </div>

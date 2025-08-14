@@ -1,40 +1,49 @@
 import * as React from 'react'
 import { Link as RouterLink } from '@tanstack/react-router'
-import { Home, User, Book, MessageSquare, LogOut, LogIn, UserPlus } from 'lucide-react'
+import { Home, User, Book, MessageSquare, LogOut, LogIn, UserPlus, Menu } from 'lucide-react'
+
 import {
     NavigationMenu,
     NavigationMenuList,
     NavigationMenuItem,
     NavigationMenuLink,
 } from '@/components/ui/navigation-menu'
+import {
+    Sheet,
+    SheetContent,
+    SheetTrigger,
+    SheetHeader,
+    SheetTitle,
+    SheetClose,
+} from '@/components/ui/sheet'
+import { Button } from '@/components/ui/button'
 import { useLogout } from '@/hooks/auth/useLogout'
 import { useAuth } from '@/providers/AuthProvider'
-import Spacer from '../Spacer'
 
 type NavItem = {
-    to?: string
+    to: string
     label: string
     icon: React.ComponentType<{ size?: number; className?: string }>
     exact?: boolean
-    onClick?: () => void
 }
 
+const authedItems: NavItem[] = [
+    { to: '/', label: 'Home', icon: Home, exact: true },
+    { to: '/binders', label: 'My Binders', icon: Book },
+    { to: '/profile', label: 'Profile', icon: User },
+    { to: '/chats', label: 'Chats', icon: MessageSquare },
+]
+
+const publicItems: NavItem[] = [
+    { to: '/', label: 'Home', icon: Home, exact: true },
+    { to: '/login', label: 'Login', icon: LogIn },
+    { to: '/register', label: 'Sign Up', icon: UserPlus },
+]
+
 export default function Nav() {
-    const logout = useLogout()
     const { user, loading } = useAuth()
-
-    const authenticatedNavItems: NavItem[] = [
-        { to: '/', label: 'Home', icon: Home, exact: true },
-        { to: '/binders', label: 'My Binders', icon: Book },
-        { to: '/profile', label: 'Profile', icon: User },
-        { to: '/chats', label: 'Chats', icon: MessageSquare },
-    ]
-
-    const navItems: NavItem[] = [
-        { to: '/', label: 'Home', icon: Home, exact: true },
-        { to: '/login', label: 'Login', icon: LogIn },
-        { to: '/register', label: 'Sign Up', icon: UserPlus },
-    ]
+    const logout = useLogout()
+    const items = user ? authedItems : publicItems
 
     const base =
         'relative inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background'
@@ -44,10 +53,10 @@ export default function Nav() {
 
     return (
         <nav
-            className='sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60'
+            className='fixed inset-x-0 top-0 z-50 w-full border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60'
             aria-label='Primary'
         >
-            <div className='mx-auto flex h-14 w-full max-w-6xl items-center px-4'>
+            <div className='mx-auto flex h-14 w-full max-w-6xl items-center gap-3 px-4'>
                 {/* Brand */}
                 <div className='flex items-center gap-2 text-sm font-semibold'>
                     <span className='inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary'>
@@ -56,14 +65,11 @@ export default function Nav() {
                     <span>Spellbook.ph</span>
                 </div>
 
-                <Spacer />
-
-                {/* Nav */}
-                <NavigationMenu>
-                    <NavigationMenuList className='gap-1 flex justify-between'>
-                        {/* Nav Items */}
-                        {(user ? authenticatedNavItems : navItems).map(
-                            ({ to, label, icon: Icon, exact }) => (
+                {/* Desktop nav */}
+                <div className='ml-auto hidden md:block'>
+                    <NavigationMenu>
+                        <NavigationMenuList className='gap-1'>
+                            {items.map(({ to, label, icon: Icon, exact }) => (
                                 <NavigationMenuItem key={to}>
                                     <NavigationMenuLink asChild>
                                         <RouterLink
@@ -78,31 +84,81 @@ export default function Nav() {
                                         </RouterLink>
                                     </NavigationMenuLink>
                                 </NavigationMenuItem>
-                            )
-                        )}
+                            ))}
 
-                        {/* Auth Controls */}
-                        {loading
-                            ? null
-                            : user && (
-                                  // Logout
-                                  <NavigationMenuItem
-                                      className='cursor-pointer ml-6'
-                                      onClick={logout}
-                                  >
-                                      <NavigationMenuLink asChild>
-                                          <span
-                                              className={`${base} ${activeStyles} ${underline}`}
-                                              aria-label='Logout'
-                                          >
-                                              <LogOut size={16} />
-                                              Logout
-                                          </span>
-                                      </NavigationMenuLink>
-                                  </NavigationMenuItem>
-                              )}
-                    </NavigationMenuList>
-                </NavigationMenu>
+                            {/* Desktop auth control */}
+                            {!loading && user && (
+                                <NavigationMenuItem className='cursor-pointer'>
+                                    <NavigationMenuLink asChild>
+                                        <button
+                                            onClick={logout}
+                                            className={`${base} ${activeStyles} ${underline}`}
+                                            aria-label='Logout'
+                                        >
+                                            <LogOut size={16} />
+                                            Logout
+                                        </button>
+                                    </NavigationMenuLink>
+                                </NavigationMenuItem>
+                            )}
+                        </NavigationMenuList>
+                    </NavigationMenu>
+                </div>
+
+                {/* Mobile hamburger */}
+                <div className='ml-auto md:hidden'>
+                    <Sheet>
+                        <SheetTrigger asChild>
+                            <Button variant='ghost' size='icon' aria-label='Open menu'>
+                                <Menu size={20} />
+                            </Button>
+                        </SheetTrigger>
+                        <SheetContent side='right' className='w-80'>
+                            <SheetHeader>
+                                <SheetTitle className='flex items-center gap-2'>
+                                    <span className='inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary'>
+                                        ✦
+                                    </span>
+                                    <span>Spellbook.ph</span>
+                                </SheetTitle>
+                            </SheetHeader>
+
+                            <div className='flex flex-col gap-2'>
+                                {items.map(({ to, label, icon: Icon, exact }) => (
+                                    <SheetClose asChild key={to}>
+                                        <RouterLink
+                                            to={to}
+                                            activeOptions={exact ? { exact: true } : undefined}
+                                            className='flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                                            activeProps={{
+                                                className:
+                                                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm bg-accent text-accent-foreground',
+                                            }}
+                                            aria-label={label}
+                                        >
+                                            <Icon size={18} />
+                                            {label}
+                                        </RouterLink>
+                                    </SheetClose>
+                                ))}
+
+                                {/* Mobile auth controls */}
+                                {!loading && user ? (
+                                    <SheetClose asChild>
+                                        <button
+                                            onClick={logout}
+                                            className='mt-2 inline-flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground'
+                                            aria-label='Logout'
+                                        >
+                                            <LogOut size={18} />
+                                            Logout
+                                        </button>
+                                    </SheetClose>
+                                ) : null}
+                            </div>
+                        </SheetContent>
+                    </Sheet>
+                </div>
             </div>
         </nav>
     )
