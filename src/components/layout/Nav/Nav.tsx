@@ -1,6 +1,15 @@
 import * as React from 'react'
 import { Link as RouterLink } from '@tanstack/react-router'
-import { Home, User, Book, MessageSquare, LogOut, LogIn, UserPlus, Menu } from 'lucide-react'
+import {
+    Home,
+    User,
+    MessageSquare,
+    LogOut,
+    LogIn,
+    UserPlus,
+    Menu,
+    FolderClosed,
+} from 'lucide-react'
 
 import {
     NavigationMenu,
@@ -29,7 +38,7 @@ type NavItem = {
 
 const authedItems: NavItem[] = [
     { to: '/', label: 'Home', icon: Home, exact: true },
-    { to: '/binders', label: 'My Binders', icon: Book },
+    { to: '/binders', label: 'My Binders', icon: FolderClosed },
     { to: '/chats', label: 'Chats', icon: MessageSquare },
     { to: '/profile', label: 'Profile', icon: User },
 ]

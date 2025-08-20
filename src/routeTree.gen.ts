@@ -18,6 +18,7 @@ import { Route as AppProfileIndexRouteImport } from './routes/_app/profile/index
 import { Route as AppChatsIndexRouteImport } from './routes/_app/chats/index'
 import { Route as AppBindersIndexRouteImport } from './routes/_app/binders/index'
 import { Route as AuthAuthCallbackRouteImport } from './routes/_auth/auth/callback'
+import { Route as AppBindersCreateRouteImport } from './routes/_app/binders/create'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/_auth',
@@ -62,11 +63,17 @@ const AuthAuthCallbackRoute = AuthAuthCallbackRouteImport.update({
   path: '/auth/callback',
   getParentRoute: () => AuthRoute,
 } as any)
+const AppBindersCreateRoute = AppBindersCreateRouteImport.update({
+  id: '/binders/create',
+  path: '/binders/create',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof AuthLoginRoute
   '/register': typeof AuthRegisterRoute
+  '/binders/create': typeof AppBindersCreateRoute
   '/auth/callback': typeof AuthAuthCallbackRoute
   '/binders': typeof AppBindersIndexRoute
   '/chats': typeof AppChatsIndexRoute
@@ -76,6 +83,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof AuthLoginRoute
   '/register': typeof AuthRegisterRoute
+  '/binders/create': typeof AppBindersCreateRoute
   '/auth/callback': typeof AuthAuthCallbackRoute
   '/binders': typeof AppBindersIndexRoute
   '/chats': typeof AppChatsIndexRoute
@@ -88,6 +96,7 @@ export interface FileRoutesById {
   '/_auth': typeof AuthRouteWithChildren
   '/_auth/login': typeof AuthLoginRoute
   '/_auth/register': typeof AuthRegisterRoute
+  '/_app/binders/create': typeof AppBindersCreateRoute
   '/_auth/auth/callback': typeof AuthAuthCallbackRoute
   '/_app/binders/': typeof AppBindersIndexRoute
   '/_app/chats/': typeof AppChatsIndexRoute
@@ -99,6 +108,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/register'
+    | '/binders/create'
     | '/auth/callback'
     | '/binders'
     | '/chats'
@@ -108,6 +118,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/register'
+    | '/binders/create'
     | '/auth/callback'
     | '/binders'
     | '/chats'
@@ -119,6 +130,7 @@ export interface FileRouteTypes {
     | '/_auth'
     | '/_auth/login'
     | '/_auth/register'
+    | '/_app/binders/create'
     | '/_auth/auth/callback'
     | '/_app/binders/'
     | '/_app/chats/'
@@ -196,16 +208,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthAuthCallbackRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/_app/binders/create': {
+      id: '/_app/binders/create'
+      path: '/binders/create'
+      fullPath: '/binders/create'
+      preLoaderRoute: typeof AppBindersCreateRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
+  AppBindersCreateRoute: typeof AppBindersCreateRoute
   AppBindersIndexRoute: typeof AppBindersIndexRoute
   AppChatsIndexRoute: typeof AppChatsIndexRoute
   AppProfileIndexRoute: typeof AppProfileIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppBindersCreateRoute: AppBindersCreateRoute,
   AppBindersIndexRoute: AppBindersIndexRoute,
   AppChatsIndexRoute: AppChatsIndexRoute,
   AppProfileIndexRoute: AppProfileIndexRoute,
