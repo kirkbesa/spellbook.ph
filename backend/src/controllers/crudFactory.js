@@ -26,7 +26,8 @@ export function createCrud(table, opts = {}) {
                 .from(table)
                 .select('*')
                 .eq(idCol, id)
-                .single()
+                .limit(1)
+                .maybeSingle()
             if (error) return res.status(404).json({ error: error.message })
             res.json({ data })
         },

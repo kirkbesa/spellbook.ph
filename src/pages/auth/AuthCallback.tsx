@@ -17,7 +17,7 @@ export default function AuthCallback() {
             }
 
             if (session) {
-                navigate({ to: '/' })
+                navigate({ to: '/profile' })
             } else {
                 navigate({ to: '/login' })
             }

@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase/supabaseClient'
 
 type RegisterOptions = {
     emailRedirectTo?: string
+    username?: string
 }
 
 export function useRegister() {
@@ -19,18 +20,26 @@ export function useRegister() {
             try {
                 if (!email || !password) throw new Error('Please fill in all fields.')
 
+                const options: NonNullable<Parameters<typeof supabase.auth.signUp>[0]['options']> =
+                    {
+                        emailRedirectTo: opts.emailRedirectTo,
+                        ...(opts.username?.trim()
+                            ? { data: { username: opts.username.trim() } }
+                            : {}),
+                    }
+
                 const { error } = await supabase.auth.signUp({
                     email,
                     password,
-                    options: opts.emailRedirectTo
-                        ? { emailRedirectTo: opts.emailRedirectTo }
-                        : undefined,
+                    options,
                 })
+
                 if (error) {
                     const msg = error.message || 'Sign up failed.'
                     setError(msg)
                     return { ok: false as const, error: msg }
                 }
+
                 // If email confirmations are on, user must click the email link to get a session.
                 return { ok: true as const }
             } catch (e) {
