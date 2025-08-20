@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { toast } from 'sonner'
-import { SpinnerCentered } from '@/components/layout/Spinner'
+import { SpinnerCentered } from '@/components/common/Spinner'
 import { useProfile } from '@/hooks/profile/useProfile'
 import ProfileHeader from './components/ProfileHeader'
 import ProfileForm from './components/ProfileForm'

@@ -1,6 +1,6 @@
 // src/binders/CreateNewBinderPage.tsx
 import { useNavigate } from '@tanstack/react-router'
-import CreateBinderForm from './CreateBinderForm'
+import CreateBinderForm from './components/CreateBinderForm'
 import type { Binder } from '@/hooks/binders/useCreateBinder'
 
 const CreateNewBinderPage = () => {

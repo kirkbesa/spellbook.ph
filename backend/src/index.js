@@ -25,6 +25,7 @@ import messagesRouter from './routes/messages.routes.js'
 import notificationsRouter from './routes/notifications.routes.js'
 import reviewsRouter from './routes/reviews.routes.js'
 import tcgPricesRouter from './routes/tcgPrices.routes.js'
+import { withSupabaseOptionalAuth } from './middleware/withSupabaseOptionalAuth.js'
 
 dotenv.config()
 
@@ -36,6 +37,7 @@ app.use(morgan('dev'))
 
 // User-scoped Supabase client per request (respects RLS)
 app.use(attachSupabase)
+app.use(withSupabaseOptionalAuth)
 
 // ----- Health-check endpoint -------------------------
 app.get('/api/health', (req, res) => {

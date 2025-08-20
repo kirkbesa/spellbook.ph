@@ -10,6 +10,7 @@ import {
     type Binder,
 } from '@/hooks/binders/useCreateBinder'
 import { toast } from 'sonner'
+import { useState } from 'react'
 
 type Props = {
     onSuccess: (binder: Binder) => void
@@ -18,10 +19,10 @@ type Props = {
 export default function CreateBinderForm({ onSuccess }: Props) {
     const { createBinder, loading, error } = useCreateBinder()
 
-    const [name, setName] = React.useState('')
-    const [pocket, setPocket] = React.useState<4 | 9 | 16>(9)
-    const [privacy, setPrivacy] = React.useState<'public' | 'unlisted' | 'private'>('public')
-    const [colorHex, setColorHex] = React.useState<string>('#2563eb') // default blue
+    const [name, setName] = useState('')
+    const [pocket, setPocket] = useState<4 | 9 | 16>(9)
+    const [privacy, setPrivacy] = useState<'public' | 'unlisted' | 'private'>('public')
+    const [colorHex, setColorHex] = useState<string>('#2563eb') // default blue
     // image upload can be added later
 
     const canSubmit = name.trim().length > 0 && !loading
