@@ -1,13 +1,12 @@
 // src/hooks/profile/useProfile.ts
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase/supabaseClient'
 import type { Row, Update } from '@/types/types'
 
 type Profile = Row<'users'>
-type ProfilePatch = Partial<Update<'users'>> // safe partial for PATCH
+type ProfilePatch = Partial<Update<'users'>>
 
-// Change if your API isn’t proxied. e.g. 'http://localhost:3000'
-const API_BASE = import.meta.env.VITE_API_BASE ?? ''
+const API_BASE = import.meta.env.VITE_API_BASE ?? '' // e.g. 'http://localhost:3000'
 
 export function useProfile() {
     const [profile, setProfile] = useState<Profile | null>(null)
@@ -15,82 +14,62 @@ export function useProfile() {
     const [error, setError] = useState<string | null>(null)
     const [updating, setUpdating] = useState(false)
 
-    const tokenRef = useRef<string | null>(null)
-    const userIdRef = useRef<string | null>(null)
-    const isMounted = useRef(true)
+    // Auth state we care about for API calls
+    const [uid, setUid] = useState<string | null>(null)
+    const [token, setToken] = useState<string | null>(null)
 
-    // Grab session token & user id once (and on auth changes)
+    // Keep auth in sync (initial + changes)
     useEffect(() => {
-        isMounted.current = true
-        const loadAuth = async () => {
-            const [{ data: userData }, { data: sessionData }] = await Promise.all([
+        const sync = async () => {
+            const [{ data: u }, { data: s }] = await Promise.all([
                 supabase.auth.getUser(),
                 supabase.auth.getSession(),
             ])
-            userIdRef.current = userData.user?.id ?? null
-            tokenRef.current = sessionData.session?.access_token ?? null
+            setUid(u.user?.id ?? null)
+            setToken(s.session?.access_token ?? null)
         }
-        loadAuth()
+        sync()
 
-        const { data: sub } = supabase.auth.onAuthStateChange(async () => {
-            await loadAuth()
-            // if auth changed, refresh profile
-            await refresh()
+        const {
+            data: { subscription },
+        } = supabase.auth.onAuthStateChange((_event, session) => {
+            setUid(session?.user?.id ?? null)
+            setToken(session?.access_token ?? null)
         })
-
-        return () => {
-            isMounted.current = false
-            sub.subscription.unsubscribe()
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        return () => subscription.unsubscribe()
     }, [])
 
     const authHeader = useMemo(
-        () =>
-            tokenRef.current
-                ? { Authorization: `Bearer ${tokenRef.current}` }
-                : ({} as Record<string, string>),
-        [tokenRef.current]
+        () => (token ? { Authorization: `Bearer ${token}` } : ({} as Record<string, string>)),
+        [token]
     )
 
     const refresh = useCallback(async () => {
         setLoading(true)
         setError(null)
         try {
-            const uid = userIdRef.current
             if (!uid) {
-                if (isMounted.current) {
-                    setProfile(null)
-                    setLoading(false)
-                }
+                setProfile(null)
                 return
             }
-
             const res = await fetch(`${API_BASE}/api/users/${uid}`, {
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...authHeader,
-                },
+                headers: { 'Content-Type': 'application/json', ...authHeader },
             })
             if (!res.ok) {
                 const body = await res.json().catch(() => ({}))
                 throw new Error(body?.error || `Failed to load profile (${res.status})`)
             }
             const { data } = (await res.json()) as { data: Profile }
-            if (isMounted.current) {
-                setProfile(data)
-            }
+            setProfile(data)
         } catch (e) {
-            if (isMounted.current)
-                setError(e instanceof Error ? e.message : 'Failed to load profile')
+            setError(e instanceof Error ? e.message : 'Failed to load profile')
         } finally {
-            if (isMounted.current) setLoading(false)
+            setLoading(false)
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [authHeader])
+    }, [API_BASE, uid, authHeader])
 
     useEffect(() => {
-        // initial fetch
+        // fetch whenever uid/token changes (e.g., after confirmation)
         refresh()
     }, [refresh])
 
@@ -99,15 +78,10 @@ export function useProfile() {
             setUpdating(true)
             setError(null)
             try {
-                const uid = userIdRef.current
                 if (!uid) throw new Error('Not authenticated')
-
                 const res = await fetch(`${API_BASE}/api/users/${uid}`, {
                     method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...authHeader,
-                    },
+                    headers: { 'Content-Type': 'application/json', ...authHeader },
                     body: JSON.stringify(patch),
                 })
                 if (!res.ok) {
@@ -115,26 +89,17 @@ export function useProfile() {
                     throw new Error(body?.error || `Failed to update profile (${res.status})`)
                 }
                 const { data } = (await res.json()) as { data: Profile }
-                if (isMounted.current) setProfile(data)
+                setProfile(data)
                 return data
             } catch (e) {
-                if (isMounted.current)
-                    setError(e instanceof Error ? e.message : 'Failed to update profile')
+                setError(e instanceof Error ? e.message : 'Failed to update profile')
                 throw e
             } finally {
-                if (isMounted.current) setUpdating(false)
+                setUpdating(false)
             }
         },
-        [authHeader]
+        [API_BASE, uid, authHeader]
     )
 
-    return {
-        profile,
-        loading,
-        error,
-        updating,
-        refresh,
-        updateProfile,
-        setProfile, // exposed for optimistic UI if you want
-    }
+    return { profile, loading, error, updating, refresh, updateProfile, setProfile }
 }
