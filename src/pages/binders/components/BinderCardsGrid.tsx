@@ -52,7 +52,7 @@ export default function BinderCardsGrid({ items, pageSize = 9 }: Props) {
                             return (
                                 <div
                                     key={it.id}
-                                    className='rounded-lg border bg-card p-2 shadow-sm transition-transform hover:scale-[1.01]'
+                                    className='rounded-lg bg-card p-2 transition-transform hover:scale-[1.01]'
                                 >
                                     {/* Image pocket */}
                                     <div className='relative mb-2 flex h-auto w-full items-center justify-center overflow-hidden rounded-lg border bg-white'>
