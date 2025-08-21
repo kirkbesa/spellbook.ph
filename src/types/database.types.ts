@@ -575,6 +575,27 @@ export type Database = {
           },
         ]
       }
+      oracles: {
+        Row: {
+          last_synced_at: string | null
+          name: string | null
+          oracle_id: string
+          prints_count: number
+        }
+        Insert: {
+          last_synced_at?: string | null
+          name?: string | null
+          oracle_id: string
+          prints_count?: number
+        }
+        Update: {
+          last_synced_at?: string | null
+          name?: string | null
+          oracle_id?: string
+          prints_count?: number
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           binder_card_id: string | null
@@ -877,6 +898,10 @@ export type Database = {
       }
       is_conversation_participant: {
         Args: { c_id: string }
+        Returns: boolean
+      }
+      username_available: {
+        Args: { u: string }
         Returns: boolean
       }
     }

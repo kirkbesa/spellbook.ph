@@ -4,6 +4,7 @@ import asyncHandler from '../middleware/asyncHandler.js'
 import { requireAuth } from '../middleware/auth.js'
 import { makeCrudRouter } from './_factory.js'
 import { userClientFromToken, anon } from '../lib/supabase/supabaseAdminClient.js'
+import { ensureFreshPrintsForOracle } from '../services/cardsCache.js'
 
 const router = express.Router()
 
@@ -71,7 +72,8 @@ router.post(
         const binderId = req.params.id
         const uid = req.user.id
         const {
-            card_id, // scryfall_id
+            card_id, // scryfall_id (specific print) -- preferred
+            oracle_id, // fallback if client doesn’t know the print yet
             quantity,
             finish, // 'non_foil' | 'foil' | 'etched'
             condition, // 'NM' | 'LP' | ...
@@ -81,7 +83,7 @@ router.post(
             tcg_basis, // 'listed_median' | 'market' | 'high' | 'low' (if 'tcgplayer')
         } = req.body ?? {}
 
-        // Check binder ownership
+        // 1) Ownership check
         const { data: binder, error: bErr } = await req.supabase
             .from('binders')
             .select('id, owner_id')
@@ -90,32 +92,101 @@ router.post(
         if (bErr) return res.status(400).json({ error: bErr.message })
         if (!binder || binder.owner_id !== uid) return res.status(403).json({ error: 'Not owner' })
 
-        if (!card_id || !quantity || quantity <= 0) {
-            return res.status(400).json({ error: 'Missing card_id or quantity' })
+        // 2) Resolve a specific print if only oracle_id provided
+        let chosenPrintId = card_id ?? null
+        let chosenOracleId = oracle_id ?? null
+
+        if (!chosenPrintId && chosenOracleId) {
+            // (A) STALENESS CHECK (await): keep cache fresh before selecting a print
+            await ensureFreshPrintsForOracle(chosenOracleId)
+
+            const { data: prints, error: pErr } = await req.supabase
+                .from('cards')
+                .select('scryfall_id, synced_at')
+                .eq('oracle_id', chosenOracleId)
+                .order('synced_at', { ascending: false })
+                .limit(1)
+            if (pErr) return res.status(400).json({ error: pErr.message })
+            if (!prints?.length)
+                return res.status(404).json({ error: 'No prints found for oracle' })
+            chosenPrintId = prints[0].scryfall_id
         }
 
-        const insert = {
+        if (!chosenPrintId) {
+            return res.status(400).json({ error: 'Provide card_id (scryfall_id) or oracle_id' })
+        }
+
+        // If client provided card_id directly, we still want the oracle_id for (B)
+        if (!chosenOracleId) {
+            const { data: row, error: rErr } = await req.supabase
+                .from('cards')
+                .select('oracle_id, name')
+                .eq('scryfall_id', chosenPrintId)
+                .single()
+            if (!rErr && row?.oracle_id) chosenOracleId = row.oracle_id
+        }
+
+        // 3) Basic payload with sensible defaults
+        const normalizedLang = (language ?? 'EN').toUpperCase()
+        const insertBase = {
             binder_id: binderId,
-            card_id,
-            quantity,
-            finish: finish ?? 'non_foil',
+            card_id: chosenPrintId, // store specific print
             condition: condition ?? 'NM',
-            language: language ?? 'EN',
+            finish: finish ?? 'non_foil',
+            language: normalizedLang,
             price_mode: price_mode ?? 'fixed',
             fixed_price: price_mode === 'fixed' ? (fixed_price ?? 0) : null,
             tcg_basis: price_mode === 'tcgplayer' ? (tcg_basis ?? 'listed_median') : null,
+            listing_status: 'available',
         }
 
+        const addQty = Number(quantity ?? 1)
+        if (addQty <= 0) return res.status(400).json({ error: 'Quantity must be > 0' })
+
+        // 4) Optional merge
+        const { data: existing, error: eErr } = await req.supabase
+            .from('binder_cards')
+            .select('id, quantity')
+            .eq('binder_id', binderId)
+            .eq('card_id', insertBase.card_id)
+            .eq('condition', insertBase.condition)
+            .eq('finish', insertBase.finish)
+            .eq('language', insertBase.language)
+            .eq('price_mode', insertBase.price_mode)
+            .limit(1)
+            .maybeSingle()
+        if (eErr) return res.status(400).json({ error: eErr.message })
+
+        if (existing) {
+            const { data, error } = await req.supabase
+                .from('binder_cards')
+                .update({ quantity: (existing.quantity ?? 0) + addQty })
+                .eq('id', existing.id)
+                .select(
+                    'id, binder_id, card_id, quantity, finish, condition, language, price_mode, fixed_price, tcg_basis'
+                )
+                .single()
+            if (error) return res.status(400).json({ error: error.message })
+
+            // (B) BACKGROUND refresh to capture *all* prints for future searches
+            if (chosenOracleId) ensureFreshPrintsForOracle(chosenOracleId).catch(() => {})
+            return res.json({ data, merged: true })
+        }
+
+        // 5) Fresh insert
         const { data, error } = await req.supabase
             .from('binder_cards')
-            .insert(insert)
+            .insert({ ...insertBase, quantity: addQty, reserved_quantity: 0 })
             .select(
                 'id, binder_id, card_id, quantity, finish, condition, language, price_mode, fixed_price, tcg_basis'
             )
             .single()
-
         if (error) return res.status(400).json({ error: error.message })
-        res.json({ data })
+
+        // (B) BACKGROUND refresh to capture *all* prints for future searches
+        if (chosenOracleId) ensureFreshPrintsForOracle(chosenOracleId).catch(() => {})
+
+        res.json({ data, merged: false })
     })
 )
 
