@@ -6,6 +6,7 @@ import ShareLinkButton from '@/components/common/ShareLinkButton'
 import { Link } from '@tanstack/react-router'
 import { Cog } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import AddCardPanel from './components/AddCardPanel'
 
 type Props = {
     binder: Binder
@@ -45,8 +46,17 @@ export default function BinderDetailPage({ binder, currentUserId }: Props) {
 
             <BinderHeader binder={binder} isOwner={isOwner} />
 
+            {isOwner ? (
+                <AddCardPanel binderId={binder.id} />
+            ) : (
+                <p className='text-sm text-muted-foreground'>
+                    Public view of this binder. (Owner-only tools hidden.)
+                </p>
+            )}
+
             <section className='rounded-lg border p-4'>
                 <h2 className='mb-2 text-lg font-semibold'>Cards</h2>
+
                 <p className='text-sm text-muted-foreground'>
                     Card input & management UI coming next. For now, this is your binder’s detail
                     page.

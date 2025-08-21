@@ -1,7 +1,7 @@
 // src/pages/binders/components/BinderHeader.tsx
 import * as React from 'react'
 import { Badge } from '@/components/ui/badge'
-import { MapPin } from 'lucide-react'
+import { FolderClosed, MapPin } from 'lucide-react'
 import type { Binder } from '@/hooks/binders/types'
 import { usePublicUser } from '@/hooks/users/usePublicUser'
 
@@ -23,11 +23,7 @@ export default function BinderHeader({ binder }: Props) {
         <div className='flex items-center justify-between gap-4 border-b pb-4'>
             {/* Left: binder basics (kept as-is) */}
             <div className='flex items-center gap-3'>
-                <div
-                    className='h-10 w-10 rounded-md border'
-                    style={{ background: binder.color_hex ?? '#e5e7eb' }}
-                    aria-hidden
-                />
+                <FolderClosed color={binder.color_hex ?? '#000000'} size={60} />
                 <div>
                     <h1 className='text-xl font-semibold'>{binder.name}</h1>
                     <div className='flex items-center gap-2 text-sm text-muted-foreground'>

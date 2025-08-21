@@ -62,6 +62,62 @@ router.get(
     })
 )
 
+// POST /api/binders/:id/cards – owner adds a listing to binder_cards
+router.post(
+    '/:id/cards',
+    requireAuth,
+    asyncHandler(async (req, res) => {
+        const binderId = req.params.id
+        const uid = req.user.id
+        const {
+            card_id, // scryfall_id
+            quantity,
+            finish, // 'non_foil' | 'foil' | 'etched'
+            condition, // 'NM' | 'LP' | ...
+            language, // e.g. 'EN'
+            price_mode, // 'fixed' | 'tcgplayer'
+            fixed_price, // number | null (if price_mode === 'fixed')
+            tcg_basis, // 'listed_median' | 'market' | 'high' | 'low' (if 'tcgplayer')
+        } = req.body ?? {}
+
+        // Check binder ownership
+        const { data: binder, error: bErr } = await req.supabase
+            .from('binders')
+            .select('id, owner_id')
+            .eq('id', binderId)
+            .single()
+        if (bErr) return res.status(400).json({ error: bErr.message })
+        if (!binder || binder.owner_id !== uid) return res.status(403).json({ error: 'Not owner' })
+
+        if (!card_id || !quantity || quantity <= 0) {
+            return res.status(400).json({ error: 'Missing card_id or quantity' })
+        }
+
+        const insert = {
+            binder_id: binderId,
+            card_id,
+            quantity,
+            finish: finish ?? 'non_foil',
+            condition: condition ?? 'NM',
+            language: language ?? 'EN',
+            price_mode: price_mode ?? 'fixed',
+            fixed_price: price_mode === 'fixed' ? (fixed_price ?? 0) : null,
+            tcg_basis: price_mode === 'tcgplayer' ? (tcg_basis ?? 'listed_median') : null,
+        }
+
+        const { data, error } = await req.supabase
+            .from('binder_cards')
+            .insert(insert)
+            .select(
+                'id, binder_id, card_id, quantity, finish, condition, language, price_mode, fixed_price, tcg_basis'
+            )
+            .single()
+
+        if (error) return res.status(400).json({ error: error.message })
+        res.json({ data })
+    })
+)
+
 // Reads public, writes auth
 const crud = makeCrudRouter('binders', { orderBy: 'created_at', publicRead: true })
 router.use('/', crud)

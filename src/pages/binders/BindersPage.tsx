@@ -29,10 +29,8 @@ export default function BindersPage() {
                     <div key={b.id} className='h-full'>
                         <Card className='flex h-full flex-col p-4 transition-transform hover:scale-[1.02]'>
                             <div className='flex items-center gap-4'>
-                                <div
-                                    className='h-12 w-12 shrink-0 rounded-md border'
-                                    style={{ background: b.color_hex ?? '#e5e7eb' }}
-                                />
+                                <FolderClosed color={b.color_hex ?? '#000000'} size={60} />
+
                                 <div className='min-w-0 flex-1'>
                                     <div className='flex gap-2'>
                                         <div className='truncate font-medium'>{b.name}</div>
