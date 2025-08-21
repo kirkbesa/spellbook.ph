@@ -18,7 +18,7 @@ router.get(
         if (!q) return res.json({ query: q, prints: [] })
 
         const cols =
-            'scryfall_id, oracle_id, name, set_code, collector_number, image_small, image_normal, tcgplayer_product_id, synced_at, created_at'
+            'scryfall_id, oracle_id, name, set_code, collector_number, image_small, image_normal, tcgplayer_product_id, set_icon_svg_uri, synced_at, created_at'
 
         // 1) DB-first
         let { data: prints, error } = await anon

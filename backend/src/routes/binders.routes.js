@@ -134,9 +134,10 @@ router.post(
             condition: condition ?? 'NM',
             finish: finish ?? 'non_foil',
             language: normalizedLang,
-            price_mode: price_mode ?? 'fixed',
-            fixed_price: price_mode === 'fixed' ? (fixed_price ?? 0) : null,
-            tcg_basis: price_mode === 'tcgplayer' ? (tcg_basis ?? 'listed_median') : null,
+            price_mode: price_mode ?? 'tcgplayer',
+            fixed_price: (price_mode ?? 'tcgplayer') === 'fixed' ? (fixed_price ?? 0) : null,
+            tcg_basis:
+                (price_mode ?? 'tcgplayer') === 'tcgplayer' ? (tcg_basis ?? 'listed_median') : null,
             listing_status: 'available',
         }
 
@@ -226,7 +227,8 @@ router.get(
           set_code,
           collector_number,
           image_small,
-          image_normal
+          image_normal,
+          set_icon_svg_uri
         )
       `
             )

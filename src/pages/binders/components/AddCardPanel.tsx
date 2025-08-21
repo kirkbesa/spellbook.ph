@@ -146,6 +146,12 @@ export default function AddCardPanel({ binderId, onAdded }: Props) {
                                     {picked.card.collector_number}]
                                 </div>
                             </div>
+                            {picked.card.set_icon_svg_uri && (
+                                <img
+                                    src={picked.card.set_icon_svg_uri}
+                                    className='inline-block h-8 w-8 align-text-bottom mr-1'
+                                />
+                            )}
                         </div>
                         <div className='flex items-center gap-1'>
                             <Button

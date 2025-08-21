@@ -107,7 +107,7 @@ export default function BinderCardsGrid({ items, pageSize = 9 }: Props) {
                                     <div className='mt-2 flex items-center justify-between text-xs'>
                                         <span className='inline-flex items-center gap-1'>
                                             <Layers className='h-3.5 w-3.5' />
-                                            {it.quantity}
+                                            {it.quantity}x
                                             {it.reserved_quantity ? (
                                                 <span className='text-[10px] text-amber-700'>
                                                     ({it.reserved_quantity} reserved)

@@ -10,6 +10,7 @@ type DbCard = {
     image_small: string | null
     image_normal: string | null
     tcgplayer_product_id: number | null
+    set_icon_svg_uri?: string | null
 }
 export type SearchResult = { source: 'db' | 'scryfall'; card: DbCard }
 
@@ -102,5 +103,6 @@ function normalizeCard(c: DbCard): DbCard {
             c.tcgplayer_product_id === null || c.tcgplayer_product_id === undefined
                 ? null
                 : Number(c.tcgplayer_product_id),
+        set_icon_svg_uri: c.set_icon_svg_uri ?? null,
     }
 }

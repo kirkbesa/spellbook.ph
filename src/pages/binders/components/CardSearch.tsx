@@ -83,7 +83,11 @@ export default function CardSearch({
                 >
                     <div className='grid grid-cols-[1fr_auto]'>
                         <div className='max-h-80 overflow-auto'>
-                            {results.length === 0 ? (
+                            {loading ? (
+                                <div className='px-3 py-2 text-sm text-muted-foreground'>
+                                    Loading cards...
+                                </div>
+                            ) : results.length === 0 ? (
                                 <div className='px-3 py-2 text-sm text-muted-foreground'>
                                     No results
                                 </div>
@@ -103,7 +107,13 @@ export default function CardSearch({
                                             setOpen(false)
                                         }}
                                     >
-                                        <div className='min-w-0'>
+                                        <div className='flex items-center gap-2 min-w-0'>
+                                            {r.card.set_icon_svg_uri && (
+                                                <img
+                                                    src={r.card.set_icon_svg_uri}
+                                                    className='inline-block h-8 w-8 align-text-bottom mr-1'
+                                                />
+                                            )}
                                             <div className='truncate'>
                                                 {r.card.name}{' '}
                                                 <span className='text-muted-foreground'>
@@ -111,9 +121,9 @@ export default function CardSearch({
                                                     {r.card.collector_number}]
                                                 </span>
                                             </div>
-                                            <div className='text-[10px] text-muted-foreground'>
+                                            {/* <div className='text-[10px] text-muted-foreground'>
                                                 {r.source === 'db' ? 'In Spellbook' : 'Scryfall'}
-                                            </div>
+                                            </div> */}
                                         </div>
                                     </div>
                                 ))
@@ -121,15 +131,15 @@ export default function CardSearch({
                         </div>
 
                         {/* Hover preview panel */}
-                        <div className='hidden min-h-[12rem] w-40 items-center justify-center border-l p-2 sm:flex'>
+                        <div className='hidden min-h-[12rem] w-70 items-center justify-center border-l p-2 sm:flex'>
                             {results[hoverIndex]?.card.image_normal ? (
                                 <img
                                     src={results[hoverIndex]!.card.image_normal!}
                                     alt={results[hoverIndex]!.card.name}
-                                    className='h-44 w-auto rounded-md border object-cover'
+                                    className='h-auto w-full rounded-md border object-cover'
                                 />
                             ) : (
-                                <div className='h-44 w-28 rounded-md border bg-muted' />
+                                <div className='h-auto w-full rounded-md border bg-muted' />
                             )}
                         </div>
                     </div>
