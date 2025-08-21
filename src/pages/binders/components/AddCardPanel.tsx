@@ -17,9 +17,9 @@ import { useAddBinderCard } from '@/hooks/binders/useAddBinderCard'
 import type { SearchResult, CardCondition, CardFinish, PriceMode, TcgBasis } from './types'
 import CardSearch from './CardSearch'
 
-type Props = { binderId: string }
+type Props = { binderId: string; onAdded?: () => void }
 
-export default function AddCardPanel({ binderId }: Props) {
+export default function AddCardPanel({ binderId, onAdded }: Props) {
     const [q, setQ] = React.useState('')
     const [picked, setPicked] = React.useState<SearchResult | null>(null)
 
@@ -55,6 +55,7 @@ export default function AddCardPanel({ binderId }: Props) {
                 fixed_price: priceMode === 'fixed' ? Number(fixedPrice || 0) : null,
                 tcg_basis: priceMode === 'tcgplayer' ? basis : null,
             })
+            onAdded?.()
             toast.success('Added to binder')
             // reset quantity but keep last query/picked
             setQuantity(1)

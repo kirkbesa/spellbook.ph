@@ -1,0 +1,32 @@
+// src/hooks/binders/cardTypes.ts
+export type CardCondition = 'NM' | 'LP' | 'MP' | 'HP' | 'DMG'
+export type CardFinish = 'non_foil' | 'foil' | 'etched'
+export type PriceMode = 'fixed' | 'tcgplayer'
+export type TcgBasis = 'listed_median' | 'market' | 'high' | 'low'
+export type ListingStatus = 'available' | 'reserved' | 'sold' | 'archived'
+
+export type BinderCard = {
+    id: string
+    binder_id: string
+    card_id: string
+    quantity: number
+    reserved_quantity: number
+    condition: CardCondition
+    finish: CardFinish
+    language: string | null
+    price_mode: PriceMode
+    fixed_price: number | null
+    tcg_basis: TcgBasis | null
+    computed_price: number | null
+    listing_status: ListingStatus
+    created_at: string
+    updated_at: string
+    card: {
+        scryfall_id: string
+        name: string
+        set_code: string
+        collector_number: string
+        image_small: string | null
+        image_normal: string | null
+    } | null
+}

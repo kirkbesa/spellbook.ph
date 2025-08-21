@@ -7,6 +7,9 @@ import { Link } from '@tanstack/react-router'
 import { Cog } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import AddCardPanel from './components/AddCardPanel'
+import { useBinderCards } from '@/hooks/binders/useBinderCards'
+import { SpinnerCentered } from '@/components/common/Spinner'
+import BinderCardsGrid from './components/BinderCardsGrid'
 
 type Props = {
     binder: Binder
@@ -15,6 +18,7 @@ type Props = {
 
 export default function BinderDetailPage({ binder, currentUserId }: Props) {
     const isOwner = currentUserId === binder.owner_id
+    const { cards, loading, error, refresh } = useBinderCards(binder.id)
 
     return (
         <div className='mx-auto w-full max-w-5xl space-y-6'>
@@ -29,8 +33,8 @@ export default function BinderDetailPage({ binder, currentUserId }: Props) {
                         >
                             <Button
                                 size='sm'
-                                variant={'ghost'}
-                                className='flex gap-2 items-center rounded-md border px-2.5 py-1.5 hover:bg-accent'
+                                variant='ghost'
+                                className='flex items-center gap-2 rounded-md border px-2.5 py-1.5 hover:bg-accent'
                             >
                                 <Cog size={16} />
                                 <span>Settings</span>
@@ -46,25 +50,19 @@ export default function BinderDetailPage({ binder, currentUserId }: Props) {
 
             <BinderHeader binder={binder} isOwner={isOwner} />
 
-            {isOwner ? (
-                <AddCardPanel binderId={binder.id} />
-            ) : (
-                <p className='text-sm text-muted-foreground'>
-                    Public view of this binder. (Owner-only tools hidden.)
-                </p>
-            )}
+            {isOwner && <AddCardPanel binderId={binder.id} onAdded={refresh} />}
 
-            <section className='rounded-lg border p-4'>
-                <h2 className='mb-2 text-lg font-semibold'>Cards</h2>
+            <section className='space-y-3 rounded-lg border p-4'>
+                <div className='flex items-center justify-between'>
+                    <h2 className='text-lg font-semibold'>Cards</h2>
+                </div>
 
-                <p className='text-sm text-muted-foreground'>
-                    Card input & management UI coming next. For now, this is your binder’s detail
-                    page.
-                </p>
-                {isOwner && (
-                    <div className='mt-3 text-xs text-muted-foreground'>
-                        You’ll be able to add cards, set prices, and share this binder.
-                    </div>
+                {loading ? (
+                    <SpinnerCentered label='Loading cards…' size='md' />
+                ) : error ? (
+                    <p className='text-sm text-red-500'>{error}</p>
+                ) : (
+                    <BinderCardsGrid items={cards} />
                 )}
             </section>
         </div>

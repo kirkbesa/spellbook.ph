@@ -3,6 +3,7 @@ import express from 'express'
 import asyncHandler from '../middleware/asyncHandler.js'
 import { requireAuth } from '../middleware/auth.js'
 import { makeCrudRouter } from './_factory.js'
+import { userClientFromToken, anon } from '../lib/supabase/supabaseAdminClient.js'
 
 const router = express.Router()
 
@@ -112,6 +113,54 @@ router.post(
                 'id, binder_id, card_id, quantity, finish, condition, language, price_mode, fixed_price, tcg_basis'
             )
             .single()
+
+        if (error) return res.status(400).json({ error: error.message })
+        res.json({ data })
+    })
+)
+
+// GET /api/binders/:id/cards
+// Public can see if binder is public (RLS handles it). Owners (with token) can see private.
+router.get(
+    '/:id/cards',
+    asyncHandler(async (req, res) => {
+        const binderId = req.params.id
+        const authHeader = req.headers.authorization || ''
+        const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null
+
+        const client = token ? userClientFromToken(token) : anon
+
+        const { data, error } = await client
+            .from('binder_cards')
+            .select(
+                `
+        id,
+        binder_id,
+        card_id,
+        quantity,
+        reserved_quantity,
+        condition,
+        finish,
+        language,
+        price_mode,
+        fixed_price,
+        tcg_basis,
+        computed_price,
+        listing_status,
+        created_at,
+        updated_at,
+        card:card_id (
+          scryfall_id,
+          name,
+          set_code,
+          collector_number,
+          image_small,
+          image_normal
+        )
+      `
+            )
+            .eq('binder_id', binderId)
+            .order('created_at', { ascending: false })
 
         if (error) return res.status(400).json({ error: error.message })
         res.json({ data })
