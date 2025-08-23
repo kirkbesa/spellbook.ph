@@ -8,6 +8,15 @@ import { ensureFreshPrintsForOracle } from '../services/cardsCache.js'
 
 const router = express.Router()
 
+// small helper to pick Scryfall USD price by finish
+function pickScryUsd(card, finish) {
+    if (!card) return null
+    if (finish === 'foil') return card.scry_usd_foil ?? card.scry_usd ?? null
+    if (finish === 'etched')
+        return card.scry_usd_etched ?? card.scry_usd_foil ?? card.scry_usd ?? null
+    return card.scry_usd ?? null
+}
+
 router.get(
     '/mine',
     requireAuth,
@@ -32,6 +41,7 @@ router.get(
         const counts = new Map()
         for (const it of items ?? [])
             counts.set(it.binder_id, (counts.get(it.binder_id) ?? 0) + Number(it.quantity ?? 0))
+
         res.json({ data: binders.map((b) => ({ ...b, card_count: counts.get(b.id) ?? 0 })) })
     })
 )
@@ -60,6 +70,7 @@ router.get(
         const counts = new Map()
         for (const it of items ?? [])
             counts.set(it.binder_id, (counts.get(it.binder_id) ?? 0) + Number(it.quantity ?? 0))
+
         res.json({ data: binders.map((b) => ({ ...b, card_count: counts.get(b.id) ?? 0 })) })
     })
 )
@@ -78,12 +89,12 @@ router.post(
             finish, // 'non_foil' | 'foil' | 'etched'
             condition, // 'NM' | 'LP' | ...
             language, // e.g. 'EN'
-            price_mode, // 'fixed' | 'tcgplayer'
+            price_mode, // 'fixed' | 'scryfall'
             fixed_price, // number | null (if price_mode === 'fixed')
-            tcg_basis, // 'listed_median' | 'market' | 'high' | 'low' (if 'tcgplayer')
+            fx_multiplier, // number | null (for 'scryfall' dynamic pricing)
         } = req.body ?? {}
 
-        // 1) Ownership check
+        // Ownership check
         const { data: binder, error: bErr } = await req.supabase
             .from('binders')
             .select('id, owner_id')
@@ -92,14 +103,12 @@ router.post(
         if (bErr) return res.status(400).json({ error: bErr.message })
         if (!binder || binder.owner_id !== uid) return res.status(403).json({ error: 'Not owner' })
 
-        // 2) Resolve a specific print if only oracle_id provided
+        // Resolve specific print if only oracle_id provided
         let chosenPrintId = card_id ?? null
         let chosenOracleId = oracle_id ?? null
 
         if (!chosenPrintId && chosenOracleId) {
-            // (A) STALENESS CHECK (await): keep cache fresh before selecting a print
             await ensureFreshPrintsForOracle(chosenOracleId)
-
             const { data: prints, error: pErr } = await req.supabase
                 .from('cards')
                 .select('scryfall_id, synced_at')
@@ -111,40 +120,62 @@ router.post(
                 return res.status(404).json({ error: 'No prints found for oracle' })
             chosenPrintId = prints[0].scryfall_id
         }
-
         if (!chosenPrintId) {
             return res.status(400).json({ error: 'Provide card_id (scryfall_id) or oracle_id' })
         }
 
-        // If client provided card_id directly, we still want the oracle_id for (B)
+        // If only card_id was provided, still try to learn oracle to background warm later
         if (!chosenOracleId) {
-            const { data: row, error: rErr } = await req.supabase
+            const { data: row } = await req.supabase
                 .from('cards')
-                .select('oracle_id, name')
+                .select('oracle_id')
                 .eq('scryfall_id', chosenPrintId)
-                .single()
-            if (!rErr && row?.oracle_id) chosenOracleId = row.oracle_id
+                .maybeSingle()
+            if (row?.oracle_id) chosenOracleId = row.oracle_id
         }
 
-        // 3) Basic payload with sensible defaults
         const normalizedLang = (language ?? 'EN').toUpperCase()
+        const mode = price_mode ?? 'scryfall'
+        const qty = Number(quantity ?? 1)
+        if (qty <= 0) return res.status(400).json({ error: 'Quantity must be > 0' })
+
+        // normalize multiplier
+        const mult = fx_multiplier === '' || fx_multiplier == null ? null : Number(fx_multiplier)
+
+        // base insert payload
         const insertBase = {
             binder_id: binderId,
-            card_id: chosenPrintId, // store specific print
+            card_id: chosenPrintId,
             condition: condition ?? 'NM',
             finish: finish ?? 'non_foil',
             language: normalizedLang,
-            price_mode: price_mode ?? 'tcgplayer',
-            fixed_price: (price_mode ?? 'tcgplayer') === 'fixed' ? (fixed_price ?? 0) : null,
-            tcg_basis:
-                (price_mode ?? 'tcgplayer') === 'tcgplayer' ? (tcg_basis ?? 'listed_median') : null,
+            price_mode: mode, // 'fixed' | 'scryfall'
+            fixed_price: mode === 'fixed' ? (fixed_price ?? 0) : null,
+            fx_multiplier: mode === 'scryfall' ? mult : null,
             listing_status: 'available',
         }
 
-        const addQty = Number(quantity ?? 1)
-        if (addQty <= 0) return res.status(400).json({ error: 'Quantity must be > 0' })
+        // If dynamic + multiplier present, compute PHP now
+        let computedPrice = null
+        if (mode === 'scryfall' && mult && mult > 0) {
+            const { data: cardRow } = await req.supabase
+                .from('cards')
+                .select('scry_usd, scry_usd_foil, scry_usd_etched')
+                .eq('scryfall_id', chosenPrintId)
+                .maybeSingle()
 
-        // 4) Optional merge
+            const pickUsd = (c, f) => {
+                if (!c) return null
+                if (f === 'foil') return c.scry_usd_foil ?? c.scry_usd ?? null
+                if (f === 'etched')
+                    return c.scry_usd_etched ?? c.scry_usd_foil ?? c.scry_usd ?? null
+                return c.scry_usd ?? null
+            }
+            const baseUsd = pickUsd(cardRow, insertBase.finish)
+            if (baseUsd != null) computedPrice = baseUsd * mult
+        }
+
+        // Merge identical listing attrs
         const { data: existing, error: eErr } = await req.supabase
             .from('binder_cards')
             .select('id, quantity')
@@ -159,34 +190,47 @@ router.post(
         if (eErr) return res.status(400).json({ error: eErr.message })
 
         if (existing) {
+            const patch = { quantity: (existing.quantity ?? 0) + qty }
+
+            if (insertBase.fx_multiplier != null) patch.fx_multiplier = insertBase.fx_multiplier
+            if (computedPrice != null) {
+                patch.computed_price = computedPrice
+                patch.last_priced_at = new Date().toISOString()
+            }
+
             const { data, error } = await req.supabase
                 .from('binder_cards')
-                .update({ quantity: (existing.quantity ?? 0) + addQty })
+                .update(patch)
                 .eq('id', existing.id)
                 .select(
-                    'id, binder_id, card_id, quantity, finish, condition, language, price_mode, fixed_price, tcg_basis'
+                    'id, binder_id, card_id, quantity, finish, condition, language, price_mode, fixed_price, fx_multiplier'
                 )
                 .single()
             if (error) return res.status(400).json({ error: error.message })
-
-            // (B) BACKGROUND refresh to capture *all* prints for future searches
             if (chosenOracleId) ensureFreshPrintsForOracle(chosenOracleId).catch(() => {})
             return res.json({ data, merged: true })
         }
 
-        // 5) Fresh insert
+        // Fresh insert
+        const insertRow = {
+            ...insertBase,
+            quantity: qty,
+            reserved_quantity: 0,
+            ...(computedPrice != null
+                ? { computed_price: computedPrice, last_priced_at: new Date().toISOString() }
+                : {}),
+        }
+
         const { data, error } = await req.supabase
             .from('binder_cards')
-            .insert({ ...insertBase, quantity: addQty, reserved_quantity: 0 })
+            .insert(insertRow)
             .select(
-                'id, binder_id, card_id, quantity, finish, condition, language, price_mode, fixed_price, tcg_basis'
+                'id, binder_id, card_id, quantity, finish, condition, language, price_mode, fixed_price, fx_multiplier'
             )
             .single()
         if (error) return res.status(400).json({ error: error.message })
 
-        // (B) BACKGROUND refresh to capture *all* prints for future searches
         if (chosenOracleId) ensureFreshPrintsForOracle(chosenOracleId).catch(() => {})
-
         res.json({ data, merged: false })
     })
 )
@@ -199,7 +243,6 @@ router.get(
         const binderId = req.params.id
         const authHeader = req.headers.authorization || ''
         const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null
-
         const client = token ? userClientFromToken(token) : anon
 
         const { data, error } = await client
@@ -216,8 +259,9 @@ router.get(
         language,
         price_mode,
         fixed_price,
-        tcg_basis,
+        fx_multiplier,
         computed_price,
+        last_priced_at,
         listing_status,
         created_at,
         updated_at,
@@ -228,7 +272,10 @@ router.get(
           collector_number,
           image_small,
           image_normal,
-          set_icon_svg_uri
+          set_icon_svg_uri,
+          scry_usd,
+          scry_usd_foil,
+          scry_usd_etched
         )
       `
             )
@@ -236,7 +283,41 @@ router.get(
             .order('created_at', { ascending: false })
 
         if (error) return res.status(400).json({ error: error.message })
-        res.json({ data })
+
+        const items = (data ?? []).map((it) => {
+            let display = null
+            let currency = null
+
+            if (it.price_mode === 'fixed') {
+                display = it.fixed_price ?? 0
+                currency = 'PHP'
+            } else {
+                // dynamic 'scryfall'
+                const card = it.card || {}
+                const usd =
+                    it.finish === 'foil'
+                        ? (card.scry_usd_foil ?? card.scry_usd ?? null)
+                        : it.finish === 'etched'
+                          ? (card.scry_usd_etched ?? card.scry_usd_foil ?? card.scry_usd ?? null)
+                          : (card.scry_usd ?? null)
+
+                if (it.fx_multiplier && usd != null) {
+                    // we have a multiplier → show PHP (prefer computed_price from DB, else compute on the fly)
+                    display = it.computed_price ?? usd * it.fx_multiplier
+                    currency = 'PHP'
+                } else {
+                    // no multiplier → only USD is meaningful
+                    display = usd
+                    currency = 'USD'
+                }
+            }
+
+            it.display_price = display
+            it.price_currency = currency
+            return it
+        })
+
+        res.json({ data: items })
     })
 )
 

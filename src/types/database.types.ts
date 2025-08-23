@@ -23,6 +23,7 @@ export type Database = {
           created_at: string
           finish: Database["public"]["Enums"]["card_finish"]
           fixed_price: number | null
+          fx_multiplier: number | null
           id: string
           language: string | null
           last_priced_at: string | null
@@ -41,6 +42,7 @@ export type Database = {
           created_at?: string
           finish?: Database["public"]["Enums"]["card_finish"]
           fixed_price?: number | null
+          fx_multiplier?: number | null
           id?: string
           language?: string | null
           last_priced_at?: string | null
@@ -59,6 +61,7 @@ export type Database = {
           created_at?: string
           finish?: Database["public"]["Enums"]["card_finish"]
           fixed_price?: number | null
+          fx_multiplier?: number | null
           id?: string
           language?: string | null
           last_priced_at?: string | null
@@ -138,9 +141,14 @@ export type Database = {
           image_small: string | null
           name: string
           oracle_id: string | null
+          scry_prices_updated_at: string | null
+          scry_usd: number | null
+          scry_usd_etched: number | null
+          scry_usd_foil: number | null
           scryfall_id: string
           searchable: unknown | null
           set_code: string
+          set_icon_svg_uri: string | null
           synced_at: string | null
           tcgplayer_product_id: number | null
           updated_at: string
@@ -152,9 +160,14 @@ export type Database = {
           image_small?: string | null
           name: string
           oracle_id?: string | null
+          scry_prices_updated_at?: string | null
+          scry_usd?: number | null
+          scry_usd_etched?: number | null
+          scry_usd_foil?: number | null
           scryfall_id: string
           searchable?: unknown | null
           set_code: string
+          set_icon_svg_uri?: string | null
           synced_at?: string | null
           tcgplayer_product_id?: number | null
           updated_at?: string
@@ -166,9 +179,14 @@ export type Database = {
           image_small?: string | null
           name?: string
           oracle_id?: string | null
+          scry_prices_updated_at?: string | null
+          scry_usd?: number | null
+          scry_usd_etched?: number | null
+          scry_usd_foil?: number | null
           scryfall_id?: string
           searchable?: unknown | null
           set_code?: string
+          set_icon_svg_uri?: string | null
           synced_at?: string | null
           tcgplayer_product_id?: number | null
           updated_at?: string
@@ -925,7 +943,7 @@ export type Database = {
         | "expired"
       order_status: "pending" | "paid" | "cancelled" | "fulfilled"
       payment_status: "unpaid" | "paid" | "refunded"
-      price_mode: "fixed" | "tcgplayer"
+      price_mode: "fixed" | "scryfall"
       tcg_basis: "listed_median" | "market" | "high" | "low"
     }
     CompositeTypes: {
@@ -1069,7 +1087,7 @@ export const Constants = {
       offer_status: ["pending", "accepted", "declined", "cancelled", "expired"],
       order_status: ["pending", "paid", "cancelled", "fulfilled"],
       payment_status: ["unpaid", "paid", "refunded"],
-      price_mode: ["fixed", "tcgplayer"],
+      price_mode: ["fixed", "scryfall"],
       tcg_basis: ["listed_median", "market", "high", "low"],
     },
   },

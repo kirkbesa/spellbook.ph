@@ -1,7 +1,7 @@
 // src/pages/binders/components/types.ts
 export type CardCondition = 'NM' | 'LP' | 'MP' | 'HP' | 'DMG'
 export type CardFinish = 'non_foil' | 'foil' | 'etched'
-export type PriceMode = 'fixed' | 'tcgplayer'
+export type PriceMode = 'fixed' | 'scryfall'
 export type TcgBasis = 'listed_median' | 'market' | 'high' | 'low'
 
 export type DbCard = {

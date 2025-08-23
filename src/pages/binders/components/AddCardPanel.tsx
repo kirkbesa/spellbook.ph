@@ -14,13 +14,12 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { toast } from 'sonner'
 import { useCardSearch } from '@/hooks/cards/useCardSearch'
 import { useAddBinderCard } from '@/hooks/binders/useAddBinderCard'
-import type { SearchResult, CardCondition, CardFinish, PriceMode, TcgBasis } from './types'
+import type { SearchResult, CardCondition, CardFinish, PriceMode } from './types'
 import CardSearch from './CardSearch'
 import { ChevronUp, ChevronDown, X } from 'lucide-react'
 
 type Props = { binderId: string; onAdded?: () => void }
 
-// Common MTG language codes (stored uppercase like your prior usage)
 const LANGUAGES = [
     { code: 'EN', label: 'English' },
     { code: 'ES', label: 'Spanish' },
@@ -36,28 +35,20 @@ const LANGUAGES = [
 ]
 
 export default function AddCardPanel({ binderId, onAdded }: Props) {
-    // Search state (always visible)
     const [q, setQ] = React.useState('')
     const { results, loading, search, setResults } = useCardSearch()
 
-    // Form state (appears after pick)
     const [picked, setPicked] = React.useState<SearchResult | null>(null)
     const [collapsed, setCollapsed] = React.useState(false)
 
-    // Debounced search
     React.useEffect(() => {
+        if (!q.trim()) {
+            setResults([])
+            return
+        }
         const t = setTimeout(() => search(q), 250)
         return () => clearTimeout(t)
-    }, [q, search])
-
-    // Close form on Escape (search bar stays)
-    React.useEffect(() => {
-        const onKey = (e: KeyboardEvent) => {
-            if (e.key === 'Escape' && picked) handleCloseForm()
-        }
-        window.addEventListener('keydown', onKey)
-        return () => window.removeEventListener('keydown', onKey)
-    }, [picked])
+    }, [q, search, setResults])
 
     const { add, saving } = useAddBinderCard(binderId)
 
@@ -66,19 +57,19 @@ export default function AddCardPanel({ binderId, onAdded }: Props) {
     const [finish, setFinish] = React.useState<CardFinish>('non_foil')
     const [language, setLanguage] = React.useState('EN')
 
-    // Default pricing to TCGplayer Listed Median
-    const [priceMode, setPriceMode] = React.useState<PriceMode>('tcgplayer')
+    // pricing: fixed or scryfall (auto with multiplier)
+    const [priceMode, setPriceMode] = React.useState<PriceMode>('scryfall')
     const [fixedPrice, setFixedPrice] = React.useState<number | ''>('')
-    const [basis, setBasis] = React.useState<TcgBasis>('listed_median')
+    const [multiplier, setMultiplier] = React.useState<number | ''>(50)
 
     const resetForm = () => {
         setQuantity(1)
         setCondition('NM')
         setFinish('non_foil')
         setLanguage('EN')
-        setPriceMode('tcgplayer')
+        setPriceMode('scryfall')
         setFixedPrice('')
-        setBasis('listed_median')
+        setMultiplier(50)
     }
 
     const handleCloseForm = () => {
@@ -86,6 +77,14 @@ export default function AddCardPanel({ binderId, onAdded }: Props) {
         setCollapsed(false)
         resetForm()
     }
+
+    React.useEffect(() => {
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && picked) handleCloseForm()
+        }
+        window.addEventListener('keydown', onKey)
+        return () => window.removeEventListener('keydown', onKey)
+    }, [picked])
 
     const onSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -98,14 +97,13 @@ export default function AddCardPanel({ binderId, onAdded }: Props) {
                 finish,
                 condition,
                 language,
-                price_mode: priceMode,
+                price_mode: priceMode, // 'fixed' | 'scryfall'
                 fixed_price: priceMode === 'fixed' ? Number(fixedPrice || 0) : null,
-                tcg_basis: priceMode === 'tcgplayer' ? basis : null,
+                fx_multiplier: priceMode === 'scryfall' ? Number(multiplier || 0) : null,
             })
             onAdded?.()
             toast.success('Added to binder')
             resetForm()
-            // keep search term; allow adding another card quickly
             setPicked(null)
             setCollapsed(false)
         } catch (err) {
@@ -115,14 +113,11 @@ export default function AddCardPanel({ binderId, onAdded }: Props) {
 
     return (
         <div className='rounded-lg border p-3'>
-            <h2 className='text-sm font-medium mb-2'>Add Cards</h2>
-            {/* Always-visible search */}
+            <h2 className='mb-2 text-sm font-medium'>Add Cards</h2>
+
             <CardSearch
                 value={q}
-                onChange={(v) => {
-                    setQ(v)
-                    if (!v) setResults([])
-                }}
+                onChange={setQ}
                 loading={loading}
                 results={results}
                 onPick={(r) => {
@@ -133,12 +128,10 @@ export default function AddCardPanel({ binderId, onAdded }: Props) {
                 placeholder='Search card name…'
             />
 
-            {/* Closeable/Collapsible details form */}
             {picked && (
                 <div className='mt-3 rounded-md'>
-                    {/* Form header with image + info */}
                     <div className='flex items-center justify-between gap-3 px-3 py-2'>
-                        <div className='flex items-center gap-3 min-w-0'>
+                        <div className='flex min-w-0 items-center gap-3'>
                             <div className='min-w-0 text-sm'>
                                 <div className='truncate font-medium'>{picked.card.name}</div>
                                 <div className='truncate text-muted-foreground'>
@@ -149,7 +142,9 @@ export default function AddCardPanel({ binderId, onAdded }: Props) {
                             {picked.card.set_icon_svg_uri && (
                                 <img
                                     src={picked.card.set_icon_svg_uri}
-                                    className='inline-block h-8 w-8 align-text-bottom mr-1'
+                                    className='mr-1 inline-block h-8 w-8 align-text-bottom'
+                                    alt=''
+                                    loading='lazy'
                                 />
                             )}
                         </div>
@@ -179,21 +174,21 @@ export default function AddCardPanel({ binderId, onAdded }: Props) {
                         </div>
                     </div>
 
-                    <div className='flex flex-col md:flex-row px-3 py-2 gap-6 justify-center'>
-                        <div className='h-full w-64 mx-auto md:mx-0 mb-4 overflow-hidden rounded-md bg-muted shrink-0'>
-                            {picked.card.image_normal || picked.card.image_small ? (
+                    <div className='flex flex-col justify-center gap-6 px-3 py-2 md:flex-row'>
+                        <div className='mb-4 h-full w-64 shrink-0 overflow-hidden rounded-md bg-muted md:mx-0'>
+                            {(picked.card.image_normal || picked.card.image_small) && (
                                 <img
                                     src={picked.card.image_normal ?? picked.card.image_small ?? ''}
                                     alt={picked.card.name}
                                     className='h-full w-full object-cover'
+                                    loading='lazy'
                                 />
-                            ) : null}
+                            )}
                         </div>
 
                         {!collapsed && (
-                            <form onSubmit={onSubmit} className='px-3 pb-3 flex-col gap-4 flex'>
-                                {/* Compact grid */}
-                                <div className='flex flex-col md:flex-row gap-4'>
+                            <form onSubmit={onSubmit} className='flex flex-col gap-4 px-3 pb-3'>
+                                <div className='flex flex-col gap-4 md:flex-row'>
                                     <div className='space-y-1'>
                                         <Label className='text-xs'>Qty</Label>
                                         <Input
@@ -208,79 +203,12 @@ export default function AddCardPanel({ binderId, onAdded }: Props) {
                                             }
                                         />
                                     </div>
-                                </div>
 
-                                {/* Pricing */}
-                                <div className='space-y-1'>
-                                    <Label className='text-xs'>Pricing</Label>
-                                    <div className='flex flex-col gap-4 md:flex-row'>
-                                        <RadioGroup
-                                            className='flex gap-4'
-                                            value={priceMode}
-                                            onValueChange={(v) => setPriceMode(v as any)}
-                                        >
-                                            <label className='flex items-center gap-1.5 text-sm'>
-                                                <RadioGroupItem value='fixed' id='pm-fixed' />
-                                                Fixed
-                                            </label>
-                                            <label className='flex items-center gap-1.5 text-sm'>
-                                                <RadioGroupItem value='tcgplayer' id='pm-tcg' />
-                                                TCGplayer
-                                            </label>
-                                        </RadioGroup>
-
-                                        {priceMode === 'fixed' ? (
-                                            <div className='flex items-center gap-2'>
-                                                <Input
-                                                    className='h-8 w-28'
-                                                    type='number'
-                                                    min={0}
-                                                    step='0.01'
-                                                    value={fixedPrice}
-                                                    onChange={(e) =>
-                                                        setFixedPrice(
-                                                            e.target.value === ''
-                                                                ? ''
-                                                                : Number(e.target.value)
-                                                        )
-                                                    }
-                                                    placeholder='0.00'
-                                                />
-                                                <span className='text-xs text-muted-foreground'>
-                                                    PHP
-                                                </span>
-                                            </div>
-                                        ) : (
-                                            <div className='flex items-center gap-2'>
-                                                <Select
-                                                    value={basis}
-                                                    onValueChange={(v) => setBasis(v as any)}
-                                                >
-                                                    <SelectTrigger className='h-8 w-44'>
-                                                        <SelectValue placeholder='Basis' />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value='listed_median'>
-                                                            Listed median
-                                                        </SelectItem>
-                                                        <SelectItem value='market'>
-                                                            Market
-                                                        </SelectItem>
-                                                        <SelectItem value='high'>High</SelectItem>
-                                                        <SelectItem value='low'>Low</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className='flex flex-col gap-4 md:flex-row'>
                                     <div className='space-y-1'>
                                         <Label className='text-xs'>Condition</Label>
                                         <Select
                                             value={condition}
-                                            onValueChange={(v) => setCondition(v as any)}
+                                            onValueChange={(v) => setCondition(v as CardCondition)}
                                         >
                                             <SelectTrigger className='h-8'>
                                                 <SelectValue placeholder='Condition' />
@@ -299,7 +227,7 @@ export default function AddCardPanel({ binderId, onAdded }: Props) {
                                         <Label className='text-xs'>Finish</Label>
                                         <Select
                                             value={finish}
-                                            onValueChange={(v) => setFinish(v as any)}
+                                            onValueChange={(v) => setFinish(v as CardFinish)}
                                         >
                                             <SelectTrigger className='h-8'>
                                                 <SelectValue placeholder='Finish' />
@@ -332,9 +260,70 @@ export default function AddCardPanel({ binderId, onAdded }: Props) {
                                     </div>
                                 </div>
 
-                                <div className='flex-1'></div>
+                                <div className='space-y-2'>
+                                    <Label>Pricing</Label>
+                                    <RadioGroup
+                                        className='flex gap-6'
+                                        value={priceMode}
+                                        onValueChange={(v) => setPriceMode(v as PriceMode)}
+                                    >
+                                        <label className='flex items-center gap-2'>
+                                            <RadioGroupItem value='fixed' id='pm-fixed' />
+                                            <span>Fixed</span>
+                                        </label>
+                                        <label className='flex items-center gap-2'>
+                                            <RadioGroupItem value='scryfall' id='pm-auto' />
+                                            <span>Auto (Scryfall)</span>
+                                        </label>
+                                    </RadioGroup>
 
-                                {/* Actions */}
+                                    {priceMode === 'fixed' && (
+                                        <div className='mt-2 flex items-center gap-2'>
+                                            <Input
+                                                type='number'
+                                                min={0}
+                                                step='0.01'
+                                                value={fixedPrice}
+                                                onChange={(e) =>
+                                                    setFixedPrice(
+                                                        e.target.value === ''
+                                                            ? ''
+                                                            : Number(e.target.value)
+                                                    )
+                                                }
+                                                placeholder='0.00'
+                                                className='w-40'
+                                            />
+                                            <span className='text-sm text-muted-foreground'>
+                                                PHP (manual)
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {priceMode === 'scryfall' && (
+                                        <div className='mt-2 flex items-center gap-2'>
+                                            <Input
+                                                type='number'
+                                                min={0}
+                                                step='1'
+                                                value={multiplier}
+                                                onChange={(e) =>
+                                                    setMultiplier(
+                                                        e.target.value === ''
+                                                            ? ''
+                                                            : Number(e.target.value)
+                                                    )
+                                                }
+                                                placeholder='50'
+                                                className='w-28'
+                                            />
+                                            <span className='text-sm text-muted-foreground'>
+                                                × (USD → PHP)
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+
                                 <div className='flex items-center justify-end gap-2'>
                                     <Button
                                         type='button'
@@ -344,7 +333,13 @@ export default function AddCardPanel({ binderId, onAdded }: Props) {
                                     >
                                         Cancel
                                     </Button>
-                                    <Button type='submit' size='sm' disabled={saving}>
+                                    <Button
+                                        type='submit'
+                                        size='sm'
+                                        disabled={
+                                            saving || (priceMode === 'fixed' && fixedPrice === '')
+                                        }
+                                    >
                                         {saving ? 'Adding…' : 'Add to binder'}
                                     </Button>
                                 </div>

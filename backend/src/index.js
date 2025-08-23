@@ -2,6 +2,7 @@
 import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
+dotenv.config()
 import helmet from 'helmet'
 import morgan from 'morgan'
 
@@ -26,8 +27,9 @@ import notificationsRouter from './routes/notifications.routes.js'
 import reviewsRouter from './routes/reviews.routes.js'
 import tcgPricesRouter from './routes/tcgPrices.routes.js'
 import { withSupabaseOptionalAuth } from './middleware/withSupabaseOptionalAuth.js'
+import pricingRoutes from './routes/pricing.routes.js'
 
-dotenv.config()
+import { startDailyPriceJobs } from './jobs/dailyPriceRefresh.js'
 
 const app = express()
 app.use(helmet())
@@ -36,8 +38,8 @@ app.use(cors())
 app.use(morgan('dev'))
 
 // User-scoped Supabase client per request (respects RLS)
-app.use(attachSupabase)
 app.use(withSupabaseOptionalAuth)
+app.use(attachSupabase)
 
 // ----- Health-check endpoint -------------------------
 app.get('/api/health', (req, res) => {
@@ -63,6 +65,7 @@ app.use('/api/messages', messagesRouter)
 app.use('/api/notifications', notificationsRouter)
 app.use('/api/reviews', reviewsRouter)
 app.use('/api/tcg-prices', tcgPricesRouter)
+app.use('/api/pricing', pricingRoutes)
 
 // Error-handling middleware (src/middleware/error.js) (always last)
 app.use(errorHandler)
@@ -70,4 +73,5 @@ app.use(errorHandler)
 const port = process.env.PORT || 3000
 app.listen(port, () => {
     console.log(`🚀 Server listening on http://localhost:${port}`)
+    startDailyPriceJobs()
 })

@@ -26,6 +26,7 @@ export async function ensureFreshPrintsForOracle(
     await refreshOracleMeta(oracleId, oracleName || null) // only writes name if provided/derived
 }
 
+const num = (v) => (v == null || v === '' ? null : Number(v))
 export async function warmCachePrintsByOracle(oracleId) {
     console.log('[warm] start oracle:', oracleId)
 
@@ -63,6 +64,11 @@ export async function warmCachePrintsByOracle(oracleId) {
                 image_small: c.image_uris?.small ?? null,
                 image_normal: c.image_uris?.normal ?? null,
                 tcgplayer_product_id: c.tcgplayer_id ?? null,
+                // 🔹 Scryfall prices (strings -> numbers)
+                scry_usd: num(c.prices?.usd),
+                scry_usd_foil: num(c.prices?.usd_foil),
+                scry_usd_etched: num(c.prices?.usd_etched),
+                scry_prices_updated_at: new Date().toISOString(),
                 // set_icon_svg_uri filled after set metadata fetch
                 synced_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
@@ -207,4 +213,31 @@ async function refreshOracleMeta(oracleId, name = null) {
 
     const { error } = await admin.from('oracles').upsert(payload)
     if (error) throw error
+}
+
+// Refresh any oracle whose last sync is older than N hours (default 24)
+export async function refreshStaleOracles({ staleHours = 24, limit = 1000 } = {}) {
+    const cutoffIso = new Date(Date.now() - staleHours * 3600 * 1000).toISOString()
+
+    // pull stale (or never-synced) oracles
+    const { data: stale, error } = await admin
+        .from('oracles')
+        .select('oracle_id, name, last_synced_at')
+        .or(`last_synced_at.is.null,last_synced_at.lt.${cutoffIso}`)
+        .limit(limit)
+
+    if (error) throw new Error(`[refreshStaleOracles] ${error.message}`)
+    if (!stale?.length) return { refreshed: 0 }
+
+    let refreshed = 0
+    for (const o of stale) {
+        try {
+            await warmCachePrintsByOracle(o.oracle_id)
+            await refreshOracleMeta(o.oracle_id, o.name ?? null)
+            refreshed++
+        } catch (e) {
+            console.warn('[refreshStaleOracles] failed for', o.oracle_id, e?.message ?? e)
+        }
+    }
+    return { refreshed }
 }

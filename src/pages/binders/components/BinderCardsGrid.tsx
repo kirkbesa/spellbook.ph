@@ -1,17 +1,40 @@
 // src/pages/binders/components/BinderCardsGrid.tsx
+import * as React from 'react'
 import type { BinderCard } from '@/hooks/binders/cardTypes'
 import { Badge } from '@/components/ui/badge'
-import { Layers } from 'lucide-react'
+import { Layers, ImageOff } from 'lucide-react'
 
-type Props = {
-    items: BinderCard[]
-    pageSize?: number // defaults to 9 (3×3)
-}
+type Props = { items: BinderCard[]; pageSize?: number }
 
 function chunk<T>(arr: T[], size: number) {
     const out: T[][] = []
     for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size))
     return out
+}
+
+/** Image section that grows (flex-1) and preserves aspect ratio. */
+function CardImage({ src, alt }: { src?: string | null; alt: string }) {
+    const [broken, setBroken] = React.useState(false)
+    const showFallback = !src || broken
+
+    return (
+        <div className='relative mb-2 w-full overflow-hidden rounded-xl border bg-white flex-1 flex items-center justify-center min-h-40'>
+            {showFallback ? (
+                <div className='flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground'>
+                    <ImageOff className='h-6 w-6' />
+                    <span className='text-[11px]'>No image</span>
+                </div>
+            ) : (
+                <img
+                    src={src!}
+                    alt={alt}
+                    className='max-h-full max-w-full object-contain'
+                    loading='lazy'
+                    onError={() => setBroken(true)}
+                />
+            )}
+        </div>
+    )
 }
 
 export default function BinderCardsGrid({ items, pageSize = 9 }: Props) {
@@ -35,125 +58,179 @@ export default function BinderCardsGrid({ items, pageSize = 9 }: Props) {
                         </div>
                     )}
 
-                    {/* 3x3 grid on sm+, 2 cols on mobile */}
-                    <div className='grid grid-cols-2 gap-3 sm:grid-cols-3'>
+                    <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 items-stretch'>
                         {page.map((it) => {
                             const img = it.card?.image_normal ?? it.card?.image_small ?? ''
                             const name = it.card?.name ?? 'Unknown'
                             const setInfo = it.card
                                 ? `[${it.card.set_code.toUpperCase()} · #${it.card.collector_number}]`
                                 : ''
-                            const price =
-                                it.price_mode === 'fixed'
-                                    ? (it.fixed_price ?? 0)
-                                    : (it.computed_price ?? 0)
                             const setLogo = it.card?.set_icon_svg_uri ?? ''
 
+                            const usdBase: number | null =
+                                it.finish === 'foil'
+                                    ? (it.card?.scry_usd_foil ?? it.card?.scry_usd ?? null)
+                                    : it.finish === 'etched'
+                                      ? (it.card?.scry_usd_etched ??
+                                        it.card?.scry_usd_foil ??
+                                        it.card?.scry_usd ??
+                                        null)
+                                      : (it.card?.scry_usd ?? null)
+
+                            let phpPrice: number | null = null
+                            let usdPrice: number | null = null
+                            if (it.price_mode === 'fixed') {
+                                phpPrice = (it.display_price ?? it.fixed_price ?? 0) as number
+                            } else {
+                                if (it.price_currency === 'PHP') {
+                                    phpPrice = (it.display_price ?? it.computed_price ?? null) as
+                                        | number
+                                        | null
+                                    usdPrice = usdBase
+                                } else {
+                                    usdPrice = (it.display_price ??
+                                        it.computed_price ??
+                                        usdBase ??
+                                        null) as number | null
+                                }
+                            }
+
                             return (
-                                <div
-                                    key={it.id}
-                                    className='rounded-lg bg-card p-2 transition-transform hover:scale-[1.01]'
-                                >
-                                    {/* Image pocket */}
-                                    <div className='relative mb-2 flex h-auto w-full items-center justify-center overflow-hidden rounded-lg border bg-white'>
-                                        {img ? (
-                                            <img
-                                                src={img}
-                                                alt={name}
-                                                className='h-full w-auto object-cover'
-                                                loading='lazy'
-                                            />
-                                        ) : (
-                                            <div className='h-full w-full' />
-                                        )}
-                                    </div>
+                                <div key={it.id} className='h-full'>
+                                    <div className='flex h-full flex-col rounded-lg bg-card p-2 transition-transform hover:scale-[1.01]'>
+                                        {/* Image grows to fill extra space */}
+                                        <CardImage src={img} alt={name} />
 
-                                    {/* Title */}
-                                    {/* Title */}
-                                    <div className='flex justify-between'>
-                                        <div>
-                                            <div className='truncate text-sm font-medium'>
-                                                {name}
+                                        {/* Title */}
+                                        <div className='flex justify-between gap-2'>
+                                            <div className='min-w-0'>
+                                                <div className='text-sm font-medium whitespace-normal break-words leading-snug'>
+                                                    {name}
+                                                </div>
+                                                <div className='text-xs text-muted-foreground whitespace-normal break-words'>
+                                                    {setInfo}
+                                                </div>
                                             </div>
-                                            <div className='truncate text-xs text-muted-foreground'>
-                                                {setInfo}
-                                            </div>
+                                            {setLogo ? (
+                                                <img
+                                                    src={setLogo}
+                                                    className='h-6 w-6 shrink-0'
+                                                    alt=''
+                                                    loading='lazy'
+                                                    onError={(e) =>
+                                                        ((
+                                                            e.currentTarget as HTMLImageElement
+                                                        ).style.display = 'none')
+                                                    }
+                                                />
+                                            ) : null}
                                         </div>
-                                        {setLogo ? (
-                                            <img
-                                                src={setLogo}
-                                                className='h-6 w-6 shrink-0'
-                                                alt=''
-                                                loading='lazy'
-                                            />
-                                        ) : null}
-                                    </div>
 
-                                    {/* Tiny specs */}
-                                    <div className='mt-2 flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground'>
-                                        <Badge
-                                            variant='secondary'
-                                            className='px-1 py-0 text-[10px]'
-                                        >
-                                            {it.finish.replace('_', ' ')}
-                                        </Badge>
-                                        <Badge variant='outline' className='px-1 py-0 text-[10px]'>
-                                            {it.condition}
-                                        </Badge>
-                                        {it.language && (
+                                        <div className='mt-auto' />
+
+                                        {/* Specs */}
+                                        <div className='mt-2 flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground'>
+                                            <Badge
+                                                variant='secondary'
+                                                className='px-1 py-0 text-[10px]'
+                                            >
+                                                {it.finish.replace('_', ' ')}
+                                            </Badge>
                                             <Badge
                                                 variant='outline'
                                                 className='px-1 py-0 text-[10px]'
                                             >
-                                                {it.language}
+                                                {it.condition}
                                             </Badge>
-                                        )}
-                                        {it.listing_status !== 'available' && (
-                                            <Badge
-                                                variant='destructive'
-                                                className='px-1 py-0 text-[10px]'
-                                            >
-                                                {it.listing_status}
-                                            </Badge>
-                                        )}
-                                    </div>
-
-                                    {/* Qty / Price */}
-                                    <div className='mt-2 flex items-center justify-between text-xs'>
-                                        <span className='inline-flex items-center gap-1'>
-                                            <Layers className='h-3.5 w-3.5' />
-                                            {it.quantity}x
-                                            {it.reserved_quantity ? (
-                                                <span className='text-[10px] text-amber-700'>
-                                                    ({it.reserved_quantity} reserved)
-                                                </span>
-                                            ) : null}
-                                        </span>
-                                        <span className='truncate'>
-                                            {it.price_mode === 'fixed' ? (
-                                                <>
-                                                    ₱
-                                                    {price.toLocaleString(undefined, {
-                                                        minimumFractionDigits: 2,
-                                                    })}
-                                                    <span className='text-[10px] text-muted-foreground'>
-                                                        {' '}
-                                                        (fixed)
-                                                    </span>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    ₱
-                                                    {price.toLocaleString(undefined, {
-                                                        minimumFractionDigits: 2,
-                                                    })}
-                                                    <span className='text-[10px] text-muted-foreground'>
-                                                        {' '}
-                                                        (tcg: {it.tcg_basis})
-                                                    </span>
-                                                </>
+                                            {it.language && (
+                                                <Badge
+                                                    variant='outline'
+                                                    className='px-1 py-0 text-[10px]'
+                                                >
+                                                    {it.language}
+                                                </Badge>
                                             )}
-                                        </span>
+                                            {it.listing_status !== 'available' && (
+                                                <Badge
+                                                    variant='destructive'
+                                                    className='px-1 py-0 text-[10px]'
+                                                >
+                                                    {it.listing_status}
+                                                </Badge>
+                                            )}
+                                        </div>
+
+                                        {/* Push price row to bottom */}
+
+                                        {/* Qty / Price */}
+                                        <div className='mt-2 flex items-center justify-between text-md'>
+                                            <span className='inline-flex items-center gap-1'>
+                                                <Layers className='h-3.5 w-3.5' />
+                                                {it.quantity}x
+                                                {it.reserved_quantity ? (
+                                                    <span className='text-[10px] text-amber-700'>
+                                                        ({it.reserved_quantity} reserved)
+                                                    </span>
+                                                ) : null}
+                                            </span>
+
+                                            <span className='truncate text-right leading-tight'>
+                                                {phpPrice != null ? (
+                                                    <>
+                                                        <span className='font-semibold'>
+                                                            ₱
+                                                            {phpPrice.toLocaleString(undefined, {
+                                                                minimumFractionDigits: 2,
+                                                            })}
+                                                        </span>
+                                                        <span className='text-xs text-muted-foreground'>
+                                                            {' '}
+                                                            (x{it.fx_multiplier})
+                                                        </span>
+                                                        {usdPrice != null && (
+                                                            <div className='text-sm text-muted-foreground'>
+                                                                $
+                                                                {usdPrice.toLocaleString(
+                                                                    undefined,
+                                                                    { minimumFractionDigits: 2 }
+                                                                )}{' '}
+                                                                USD
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                ) : it.price_mode === 'fixed' ? (
+                                                    <>
+                                                        ₱
+                                                        {(
+                                                            it.display_price ??
+                                                            it.fixed_price ??
+                                                            0
+                                                        ).toLocaleString(undefined, {
+                                                            minimumFractionDigits: 2,
+                                                        })}
+                                                        <span className='text-[10px] text-muted-foreground'>
+                                                            {' '}
+                                                            (fixed)
+                                                        </span>
+                                                    </>
+                                                ) : usdPrice != null ? (
+                                                    <>
+                                                        $
+                                                        {usdPrice.toLocaleString(undefined, {
+                                                            minimumFractionDigits: 2,
+                                                        })}{' '}
+                                                        USD
+                                                        <div className='text-[10px] text-muted-foreground'>
+                                                            set multiplier to show ₱
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <span className='text-[10px] text-muted-foreground'>
+                                                        pricing…
+                                                    </span>
+                                                )}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             )
