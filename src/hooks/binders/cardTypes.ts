@@ -28,5 +28,6 @@ export type BinderCard = {
         collector_number: string
         image_small: string | null
         image_normal: string | null
+        set_icon_svg_uri: string | null
     } | null
 }

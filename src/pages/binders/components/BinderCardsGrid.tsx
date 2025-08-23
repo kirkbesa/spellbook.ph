@@ -1,5 +1,4 @@
 // src/pages/binders/components/BinderCardsGrid.tsx
-import * as React from 'react'
 import type { BinderCard } from '@/hooks/binders/cardTypes'
 import { Badge } from '@/components/ui/badge'
 import { Layers } from 'lucide-react'
@@ -48,6 +47,7 @@ export default function BinderCardsGrid({ items, pageSize = 9 }: Props) {
                                 it.price_mode === 'fixed'
                                     ? (it.fixed_price ?? 0)
                                     : (it.computed_price ?? 0)
+                            const setLogo = it.card?.set_icon_svg_uri ?? ''
 
                             return (
                                 <div
@@ -69,9 +69,24 @@ export default function BinderCardsGrid({ items, pageSize = 9 }: Props) {
                                     </div>
 
                                     {/* Title */}
-                                    <div className='truncate text-sm font-medium'>{name}</div>
-                                    <div className='truncate text-xs text-muted-foreground'>
-                                        {setInfo}
+                                    {/* Title */}
+                                    <div className='flex justify-between'>
+                                        <div>
+                                            <div className='truncate text-sm font-medium'>
+                                                {name}
+                                            </div>
+                                            <div className='truncate text-xs text-muted-foreground'>
+                                                {setInfo}
+                                            </div>
+                                        </div>
+                                        {setLogo ? (
+                                            <img
+                                                src={setLogo}
+                                                className='h-6 w-6 shrink-0'
+                                                alt=''
+                                                loading='lazy'
+                                            />
+                                        ) : null}
                                     </div>
 
                                     {/* Tiny specs */}
