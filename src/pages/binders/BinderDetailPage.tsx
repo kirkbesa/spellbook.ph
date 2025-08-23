@@ -62,7 +62,7 @@ export default function BinderDetailPage({ binder, currentUserId }: Props) {
                 ) : error ? (
                     <p className='text-sm text-red-500'>{error}</p>
                 ) : (
-                    <BinderCardsGrid items={cards} />
+                    <BinderCardsGrid items={cards} refresh={refresh} isOwner={isOwner} />
                 )}
             </section>
         </div>

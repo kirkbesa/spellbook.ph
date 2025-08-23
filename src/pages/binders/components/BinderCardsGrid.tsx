@@ -1,10 +1,18 @@
-// src/pages/binders/components/BinderCardsGrid.tsx
 import * as React from 'react'
 import type { BinderCard } from '@/hooks/binders/cardTypes'
 import { Badge } from '@/components/ui/badge'
-import { Layers, ImageOff } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Layers, ImageOff, SquareX } from 'lucide-react'
+import { useRemoveBinderCard } from '@/hooks/binders/useRemoveBinderCard'
+import { toast } from 'sonner'
 
-type Props = { items: BinderCard[]; pageSize?: number }
+type Props = {
+    items: BinderCard[]
+    pageSize?: number
+    onRemoved?: (id: string) => void
+    refresh: () => void
+    isOwner: boolean
+}
 
 function chunk<T>(arr: T[], size: number) {
     const out: T[][] = []
@@ -12,13 +20,43 @@ function chunk<T>(arr: T[], size: number) {
     return out
 }
 
-/** Image section that grows (flex-1) and preserves aspect ratio. */
-function CardImage({ src, alt }: { src?: string | null; alt: string }) {
+/** Image section that grows (flex-1) and preserves aspect ratio, with top-right Remove btn. */
+function CardImage({
+    src,
+    alt,
+    onRemoveClick,
+    removing,
+    isOwner,
+}: {
+    src?: string | null
+    alt: string
+    onRemoveClick?: () => void
+    removing?: boolean
+    isOwner: boolean
+}) {
     const [broken, setBroken] = React.useState(false)
     const showFallback = !src || broken
 
     return (
         <div className='relative mb-2 w-full overflow-hidden rounded-xl border bg-white flex-1 flex items-center justify-center min-h-40'>
+            {isOwner && onRemoveClick && (
+                <div className='absolute right-2 top-2 z-10'>
+                    <Button
+                        variant='destructive'
+                        size='icon'
+                        className='h-7 w-7'
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            onRemoveClick()
+                        }}
+                        disabled={removing}
+                        title='Remove from binder'
+                    >
+                        <SquareX className='h-4 w-4' />
+                    </Button>
+                </div>
+            )}
+
             {showFallback ? (
                 <div className='flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground'>
                     <ImageOff className='h-6 w-6' />
@@ -37,8 +75,15 @@ function CardImage({ src, alt }: { src?: string | null; alt: string }) {
     )
 }
 
-export default function BinderCardsGrid({ items, pageSize = 9 }: Props) {
+export default function BinderCardsGrid({
+    items,
+    pageSize = 9,
+    onRemoved,
+    refresh,
+    isOwner,
+}: Props) {
     const pages = chunk(items, pageSize)
+    const { remove, removingId } = useRemoveBinderCard(onRemoved)
 
     if (items.length === 0) {
         return (
@@ -95,11 +140,34 @@ export default function BinderCardsGrid({ items, pageSize = 9 }: Props) {
                                 }
                             }
 
+                            const handleRemove = async () => {
+                                if ((it.reserved_quantity ?? 0) > 0) {
+                                    toast.error('Cannot remove: reserved copies exist.')
+                                    return
+                                }
+                                if (!window.confirm('Remove this listing from your binder?')) return
+                                try {
+                                    await remove(it.id)
+                                    toast.success('Removed')
+                                    refresh()
+                                } catch (e) {
+                                    toast.error(
+                                        e instanceof Error ? e?.message : 'Failed to remove'
+                                    )
+                                }
+                            }
+
                             return (
                                 <div key={it.id} className='h-full'>
                                     <div className='flex h-full flex-col rounded-lg bg-card p-2 transition-transform hover:scale-[1.01]'>
-                                        {/* Image grows to fill extra space */}
-                                        <CardImage src={img} alt={name} />
+                                        {/* Image grows to fill extra space, with remove button */}
+                                        <CardImage
+                                            src={img}
+                                            alt={name}
+                                            onRemoveClick={handleRemove}
+                                            removing={removingId === it.id}
+                                            isOwner={isOwner}
+                                        />
 
                                         {/* Title */}
                                         <div className='flex justify-between gap-2'>
@@ -159,8 +227,6 @@ export default function BinderCardsGrid({ items, pageSize = 9 }: Props) {
                                                 </Badge>
                                             )}
                                         </div>
-
-                                        {/* Push price row to bottom */}
 
                                         {/* Qty / Price */}
                                         <div className='mt-2 flex items-center justify-between text-md'>
