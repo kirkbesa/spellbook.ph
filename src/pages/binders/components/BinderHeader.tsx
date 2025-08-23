@@ -28,7 +28,6 @@ export default function BinderHeader({ binder }: Props) {
                     <h1 className='text-xl font-semibold'>{binder.name}</h1>
                     <div className='flex items-center gap-2 text-sm text-muted-foreground'>
                         <Badge variant='secondary'>{binder.privacy}</Badge>
-                        <span>{binder.pocket_layout}-pocket</span>
                     </div>
                 </div>
             </div>
