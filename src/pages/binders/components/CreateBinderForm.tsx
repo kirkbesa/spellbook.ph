@@ -45,6 +45,7 @@ export default function CreateBinderForm({ onSuccess }: Props) {
     const [coverPick, setCoverPick] = useState<SearchResult | null>(null)
     const [coverArtUrl, setCoverArtUrl] = useState<string | null>(null)
     const [fetchingArt, setFetchingArt] = useState(false)
+    const [description, setDescription] = useState('')
 
     // Search for the cover card
     const [q, setQ] = useState('')
@@ -65,6 +66,7 @@ export default function CreateBinderForm({ onSuccess }: Props) {
             pocket_layout: pocket,
             privacy,
             image_url: coverArtUrl ?? null, // << use art_crop as binder cover
+            description: description.trim() || null,
             // color_hex: undefined, // no longer used
         }
 
@@ -102,7 +104,7 @@ export default function CreateBinderForm({ onSuccess }: Props) {
 
                 <CardContent className='space-y-6'>
                     <div className='grid gap-4 sm:grid-cols-2'>
-                        <div className='space-y-2'>
+                        <div className='space-y-2 sm:col-span-2'>
                             <Label htmlFor='name'>Binder name</Label>
                             <Input
                                 id='name'
@@ -111,6 +113,18 @@ export default function CreateBinderForm({ onSuccess }: Props) {
                                 onChange={(e) => setName(e.target.value)}
                                 disabled={loading}
                                 required
+                            />
+                        </div>
+
+                        <div className='space-y-2 sm:col-span-2'>
+                            <Label htmlFor='description'>Description (optional)</Label>
+                            <textarea
+                                id='description'
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                placeholder='What’s in this binder? What are your shipping policies? (e.g., “EDH staples, shipping via J&T/Lalamove”). '
+                                className='min-h-[80px] w-full rounded-md border bg-background px-3 py-2 text-sm'
+                                disabled={loading}
                             />
                         </div>
 
@@ -128,8 +142,7 @@ export default function CreateBinderForm({ onSuccess }: Props) {
                                 <option value={16}>16-pocket</option>
                             </select>
                         </div> */}
-
-                        <div className='space-y-2'>
+                        <div className='space-y-2 sm:col-span-2'>
                             <Label htmlFor='privacy'>Privacy</Label>
                             <select
                                 id='privacy'
@@ -145,7 +158,6 @@ export default function CreateBinderForm({ onSuccess }: Props) {
                                 <option value='private'>Private</option>
                             </select>
                         </div>
-
                         {/* Cover art picker */}
                         <div className='space-y-2 sm:col-span-2'>
                             <Label>Cover art (optional)</Label>

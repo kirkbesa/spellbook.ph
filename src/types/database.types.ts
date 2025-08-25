@@ -93,6 +93,7 @@ export type Database = {
         Row: {
           color_hex: string | null
           created_at: string
+          description: string | null
           id: string
           image_url: string | null
           name: string
@@ -104,6 +105,7 @@ export type Database = {
         Insert: {
           color_hex?: string | null
           created_at?: string
+          description?: string | null
           id?: string
           image_url?: string | null
           name: string
@@ -115,6 +117,7 @@ export type Database = {
         Update: {
           color_hex?: string | null
           created_at?: string
+          description?: string | null
           id?: string
           image_url?: string | null
           name?: string

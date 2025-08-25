@@ -150,7 +150,10 @@ export default function BinderCardsGrid({
 
     return (
         <div className='space-y-3'>
-            <PageControls />
+            <div className='flex items-center justify-between'>
+                <h2 className='text-lg font-semibold'>Cards</h2>
+                <PageControls />
+            </div>
 
             <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 items-stretch'>
                 {pageItems.map((it) => {

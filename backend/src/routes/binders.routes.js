@@ -25,7 +25,7 @@ router.get(
         const { data: binders, error } = await req.supabase
             .from('binders')
             .select(
-                'id, owner_id, name, color_hex, pocket_layout, image_url, privacy, created_at, updated_at'
+                'id, owner_id, name, description, color_hex, pocket_layout, image_url, privacy, created_at, updated_at'
             )
             .eq('owner_id', uid)
             .order('created_at', { ascending: false })
@@ -55,7 +55,9 @@ router.get(
         const userId = req.params.id
         const { data: binders, error } = await req.supabase
             .from('binders')
-            .select('id, owner_id, name, color_hex, pocket_layout, privacy, created_at, updated_at')
+            .select(
+                'id, owner_id, name, description, color_hex, pocket_layout, image_url, privacy, created_at, updated_at'
+            )
             .eq('owner_id', userId)
             .order('created_at', { ascending: false })
         if (error) return res.status(400).json({ error: error.message })

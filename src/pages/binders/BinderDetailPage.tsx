@@ -53,10 +53,6 @@ export default function BinderDetailPage({ binder, currentUserId }: Props) {
             {isOwner && <AddCardPanel binderId={binder.id} onAdded={refresh} />}
 
             <section className='space-y-3 rounded-lg border p-4'>
-                <div className='flex items-center justify-between'>
-                    <h2 className='text-lg font-semibold'>Cards</h2>
-                </div>
-
                 {loading ? (
                     <SpinnerCentered label='Loading cards…' size='md' />
                 ) : error ? (

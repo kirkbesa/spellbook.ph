@@ -21,6 +21,7 @@ export default function BinderSettingsPage({ binder }: Props) {
     const router = useRouter()
     const [name, setName] = React.useState(binder.name)
     const [privacy, setPrivacy] = React.useState<Binder['privacy']>(binder.privacy)
+    const [description, setDescription] = React.useState(binder.description ?? '')
 
     // Cover art (Scryfall art-crop URL) — default from binder
     const [coverUrl, setCoverUrl] = React.useState<string>(binder.image_url ?? '')
@@ -68,6 +69,7 @@ export default function BinderSettingsPage({ binder }: Props) {
                     name,
                     privacy,
                     image_url: coverUrl || null, // ← store chosen art-crop URL or null
+                    description: description.trim() || null,
                     // color_hex: null, // optional: if you want to explicitly clear legacy color
                 }),
             })
@@ -100,6 +102,16 @@ export default function BinderSettingsPage({ binder }: Props) {
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder='Binder name'
+                    />
+                </div>
+
+                <div className='space-y-1'>
+                    <label className='text-sm font-medium'>Description</label>
+                    <textarea
+                        className='w-full rounded-md border px-3 py-2 text-sm min-h-[100px]'
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        placeholder='Describe what’s inside this binder…'
                     />
                 </div>
 

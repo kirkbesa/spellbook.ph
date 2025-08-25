@@ -13,6 +13,7 @@ export type CreateBinderInput = {
     privacy: BinderPrivacy
     color_hex?: string | null
     image_url?: string | null
+    description?: string | null
 }
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? ''

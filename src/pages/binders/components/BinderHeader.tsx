@@ -37,16 +37,22 @@ export default function BinderHeader({ binder }: Props) {
             {/* Details */}
             <div className='flex items-center justify-between gap-4 border-b pb-4'>
                 {/* Left: binder basics (kept as-is) */}
-                <div className='flex items-center gap-3'>
-                    {/* <FolderClosed color={binder.color_hex ?? '#000000'} size={60} /> */}
-                    <div className='flex flex-row gap-4'>
-                        <h1 className='text-xl font-semibold'>{binder.name}</h1>
-                        <div className='flex items-center gap-2 text-sm text-muted-foreground'>
-                            <Badge variant='secondary'>{binder.privacy}</Badge>
+                <div className='flex flex-col'>
+                    <div className='flex items-center gap-3'>
+                        {/* <FolderClosed color={binder.color_hex ?? '#000000'} size={60} /> */}
+                        <div className='flex flex-row gap-4'>
+                            <h1 className='text-xl font-semibold'>{binder.name}</h1>
+                            <div className='flex items-center gap-2 text-sm text-muted-foreground'>
+                                <Badge variant='secondary'>{binder.privacy}</Badge>
+                            </div>
                         </div>
                     </div>
+                    {binder.description ? (
+                        <div className='mt-1 text-xs text-muted-foreground whitespace-pre-wrap break-words line-clamp-2'>
+                            {binder.description}
+                        </div>
+                    ) : null}
                 </div>
-
                 {/* Right: owner chip (avatar, name, location only) */}
                 <div className='flex items-center gap-3'>
                     {/* Avatar */}
