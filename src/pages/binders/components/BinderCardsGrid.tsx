@@ -1,8 +1,9 @@
+// src/pages/binders/components/BinderCardsGrid.tsx
 import * as React from 'react'
 import type { BinderCard } from '@/hooks/binders/cardTypes'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Layers, ImageOff, SquareX } from 'lucide-react'
+import { Layers, ImageOff, SquareX, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useRemoveBinderCard } from '@/hooks/binders/useRemoveBinderCard'
 import { toast } from 'sonner'
 
@@ -14,13 +15,7 @@ type Props = {
     isOwner: boolean
 }
 
-function chunk<T>(arr: T[], size: number) {
-    const out: T[][] = []
-    for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size))
-    return out
-}
-
-/** Image section that grows (flex-1) and preserves aspect ratio, with top-right Remove btn. */
+/** Image section that preserves aspect ratio and shows a top-right Remove button for owners. */
 function CardImage({
     src,
     alt,
@@ -38,7 +33,7 @@ function CardImage({
     const showFallback = !src || broken
 
     return (
-        <div className='relative mb-2 w-full overflow-hidden rounded-xl border bg-white flex-1 flex items-center justify-center min-h-40'>
+        <div className='mb-2 rounded-xl w-full overflow-hidden relative'>
             {isOwner && onRemoveClick && (
                 <div className='absolute right-2 top-2 z-10'>
                     <Button
@@ -82,8 +77,19 @@ export default function BinderCardsGrid({
     refresh,
     isOwner,
 }: Props) {
-    const pages = chunk(items, pageSize)
     const { remove, removingId } = useRemoveBinderCard(onRemoved)
+
+    const [pageIndex, setPageIndex] = React.useState(0)
+    const totalPages = Math.max(1, Math.ceil(items.length / pageSize))
+
+    // Clamp page when items change (e.g., after delete)
+    React.useEffect(() => {
+        if (pageIndex > totalPages - 1) setPageIndex(totalPages - 1)
+    }, [items.length, pageSize, totalPages, pageIndex])
+
+    const start = pageIndex * pageSize
+    const end = start + pageSize
+    const pageItems = items.slice(start, end)
 
     if (items.length === 0) {
         return (
@@ -93,217 +99,231 @@ export default function BinderCardsGrid({
         )
     }
 
+    const PageControls = () => (
+        <div className='flex items-center justify-end gap-2 text-sm'>
+            <span className='text-muted-foreground'>
+                Page {pageIndex + 1} of {totalPages}
+            </span>
+            <Button
+                variant='outline'
+                size='icon'
+                className='h-8 w-8'
+                onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
+                disabled={pageIndex === 0}
+                title='Previous page'
+            >
+                <ChevronLeft className='h-4 w-4' />
+            </Button>
+            <Button
+                variant='outline'
+                size='icon'
+                className='h-8 w-8'
+                onClick={() => setPageIndex((p) => Math.min(totalPages - 1, p + 1))}
+                disabled={pageIndex >= totalPages - 1}
+                title='Next page'
+            >
+                <ChevronRight className='h-4 w-4' />
+            </Button>
+        </div>
+    )
+
     return (
-        <div className='space-y-6'>
-            {pages.map((page, pi) => (
-                <div key={pi} className='space-y-2'>
-                    {pages.length > 1 && (
-                        <div className='text-xs font-medium text-muted-foreground'>
-                            Page {pi + 1}
-                        </div>
-                    )}
+        <div className='space-y-3'>
+            {/* Top-right controls */}
+            <PageControls />
 
-                    <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 items-stretch'>
-                        {page.map((it) => {
-                            const img = it.card?.image_normal ?? it.card?.image_small ?? ''
-                            const name = it.card?.name ?? 'Unknown'
-                            const setInfo = it.card
-                                ? `[${it.card.set_code.toUpperCase()} · #${it.card.collector_number}]`
-                                : ''
-                            const setLogo = it.card?.set_icon_svg_uri ?? ''
+            <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 items-stretch'>
+                {pageItems.map((it) => {
+                    const img = it.card?.image_normal ?? it.card?.image_small ?? ''
+                    const name = it.card?.name ?? 'Unknown'
+                    const setInfo = it.card
+                        ? `[${it.card.set_code.toUpperCase()} · #${it.card.collector_number}]`
+                        : ''
+                    const setLogo = it.card?.set_icon_svg_uri ?? ''
 
-                            const usdBase: number | null =
-                                it.finish === 'foil'
-                                    ? (it.card?.scry_usd_foil ?? it.card?.scry_usd ?? null)
-                                    : it.finish === 'etched'
-                                      ? (it.card?.scry_usd_etched ??
-                                        it.card?.scry_usd_foil ??
-                                        it.card?.scry_usd ??
-                                        null)
-                                      : (it.card?.scry_usd ?? null)
+                    // USD base price by finish (for the small line)
+                    const usdBase: number | null =
+                        it.finish === 'foil'
+                            ? (it.card?.scry_usd_foil ?? it.card?.scry_usd ?? null)
+                            : it.finish === 'etched'
+                              ? (it.card?.scry_usd_etched ??
+                                it.card?.scry_usd_foil ??
+                                it.card?.scry_usd ??
+                                null)
+                              : (it.card?.scry_usd ?? null)
 
-                            let phpPrice: number | null = null
-                            let usdPrice: number | null = null
-                            if (it.price_mode === 'fixed') {
-                                phpPrice = (it.display_price ?? it.fixed_price ?? 0) as number
-                            } else {
-                                if (it.price_currency === 'PHP') {
-                                    phpPrice = (it.display_price ?? it.computed_price ?? null) as
-                                        | number
-                                        | null
-                                    usdPrice = usdBase
-                                } else {
-                                    usdPrice = (it.display_price ??
-                                        it.computed_price ??
-                                        usdBase ??
-                                        null) as number | null
-                                }
-                            }
+                    // Decide PHP vs USD
+                    let phpPrice: number | null = null
+                    let usdPrice: number | null = null
+                    if (it.price_mode === 'fixed') {
+                        phpPrice = (it.display_price ?? it.fixed_price ?? 0) as number
+                    } else {
+                        if (it.price_currency === 'PHP') {
+                            phpPrice = (it.display_price ?? it.computed_price ?? null) as
+                                | number
+                                | null
+                            usdPrice = usdBase
+                        } else {
+                            usdPrice = (it.display_price ??
+                                it.computed_price ??
+                                usdBase ??
+                                null) as number | null
+                        }
+                    }
 
-                            const handleRemove = async () => {
-                                if ((it.reserved_quantity ?? 0) > 0) {
-                                    toast.error('Cannot remove: reserved copies exist.')
-                                    return
-                                }
-                                if (!window.confirm('Remove this listing from your binder?')) return
-                                try {
-                                    await remove(it.id)
-                                    toast.success('Removed')
-                                    refresh()
-                                } catch (e) {
-                                    toast.error(
-                                        e instanceof Error ? e?.message : 'Failed to remove'
-                                    )
-                                }
-                            }
+                    const handleRemove = async () => {
+                        if ((it.reserved_quantity ?? 0) > 0) {
+                            toast.error('Cannot remove: reserved copies exist.')
+                            return
+                        }
+                        if (!window.confirm('Remove this listing from your binder?')) return
+                        try {
+                            await remove(it.id)
+                            toast.success('Removed')
+                            refresh()
+                        } catch (e) {
+                            toast.error(e instanceof Error ? e?.message : 'Failed to remove')
+                        }
+                    }
 
-                            return (
-                                <div key={it.id} className='h-full'>
-                                    <div className='flex h-full flex-col rounded-lg bg-card p-2 transition-transform hover:scale-[1.01]'>
-                                        {/* Image grows to fill extra space, with remove button */}
-                                        <CardImage
-                                            src={img}
-                                            alt={name}
-                                            onRemoveClick={handleRemove}
-                                            removing={removingId === it.id}
-                                            isOwner={isOwner}
+                    return (
+                        <div key={it.id} className='h-full'>
+                            <div className='flex h-full flex-col rounded-lg bg-card p-2 transition-transform hover:scale-[1.01]'>
+                                {/* Image + remove */}
+                                <CardImage
+                                    src={img}
+                                    alt={name}
+                                    onRemoveClick={handleRemove}
+                                    removing={removingId === it.id}
+                                    isOwner={isOwner}
+                                />
+
+                                {/* Title */}
+                                <div className='flex justify-between gap-2'>
+                                    <div className='min-w-0'>
+                                        <div className='text-sm font-medium whitespace-normal break-words leading-snug'>
+                                            {name}
+                                        </div>
+                                        <div className='text-xs text-muted-foreground whitespace-normal break-words'>
+                                            {setInfo}
+                                        </div>
+                                    </div>
+                                    {setLogo ? (
+                                        <img
+                                            src={setLogo}
+                                            className='h-6 w-6 shrink-0'
+                                            alt=''
+                                            loading='lazy'
+                                            onError={(e) =>
+                                                ((
+                                                    e.currentTarget as HTMLImageElement
+                                                ).style.display = 'none')
+                                            }
                                         />
+                                    ) : null}
+                                </div>
 
-                                        {/* Title */}
-                                        <div className='flex justify-between gap-2'>
-                                            <div className='min-w-0'>
-                                                <div className='text-sm font-medium whitespace-normal break-words leading-snug'>
-                                                    {name}
-                                                </div>
-                                                <div className='text-xs text-muted-foreground whitespace-normal break-words'>
-                                                    {setInfo}
-                                                </div>
-                                            </div>
-                                            {setLogo ? (
-                                                <img
-                                                    src={setLogo}
-                                                    className='h-6 w-6 shrink-0'
-                                                    alt=''
-                                                    loading='lazy'
-                                                    onError={(e) =>
-                                                        ((
-                                                            e.currentTarget as HTMLImageElement
-                                                        ).style.display = 'none')
-                                                    }
-                                                />
-                                            ) : null}
-                                        </div>
+                                <div className='mt-auto' />
 
-                                        <div className='mt-auto' />
+                                {/* Specs */}
+                                <div className='mt-2 flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground'>
+                                    <Badge variant='secondary' className='px-1 py-0 text-[10px]'>
+                                        {it.finish.replace('_', ' ')}
+                                    </Badge>
+                                    <Badge variant='outline' className='px-1 py-0 text-[10px]'>
+                                        {it.condition}
+                                    </Badge>
+                                    {it.language && (
+                                        <Badge variant='outline' className='px-1 py-0 text-[10px]'>
+                                            {it.language}
+                                        </Badge>
+                                    )}
+                                    {it.listing_status !== 'available' && (
+                                        <Badge
+                                            variant='destructive'
+                                            className='px-1 py-0 text-[10px]'
+                                        >
+                                            {it.listing_status}
+                                        </Badge>
+                                    )}
+                                </div>
 
-                                        {/* Specs */}
-                                        <div className='mt-2 flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground'>
-                                            <Badge
-                                                variant='secondary'
-                                                className='px-1 py-0 text-[10px]'
-                                            >
-                                                {it.finish.replace('_', ' ')}
-                                            </Badge>
-                                            <Badge
-                                                variant='outline'
-                                                className='px-1 py-0 text-[10px]'
-                                            >
-                                                {it.condition}
-                                            </Badge>
-                                            {it.language && (
-                                                <Badge
-                                                    variant='outline'
-                                                    className='px-1 py-0 text-[10px]'
-                                                >
-                                                    {it.language}
-                                                </Badge>
-                                            )}
-                                            {it.listing_status !== 'available' && (
-                                                <Badge
-                                                    variant='destructive'
-                                                    className='px-1 py-0 text-[10px]'
-                                                >
-                                                    {it.listing_status}
-                                                </Badge>
-                                            )}
-                                        </div>
-
-                                        {/* Qty / Price */}
-                                        <div className='mt-2 flex items-center justify-between text-md'>
-                                            <span className='inline-flex items-center gap-1'>
-                                                <Layers className='h-3.5 w-3.5' />
-                                                {it.quantity}x
-                                                {it.reserved_quantity ? (
-                                                    <span className='text-[10px] text-amber-700'>
-                                                        ({it.reserved_quantity} reserved)
-                                                    </span>
-                                                ) : null}
+                                {/* Qty / Price */}
+                                <div className='mt-2 flex items-center justify-between text-md'>
+                                    <span className='inline-flex items-center gap-1'>
+                                        <Layers className='h-3.5 w-3.5' />
+                                        {it.quantity}x
+                                        {it.reserved_quantity ? (
+                                            <span className='text-[10px] text-amber-700'>
+                                                ({it.reserved_quantity} reserved)
                                             </span>
+                                        ) : null}
+                                    </span>
 
-                                            <span className='truncate text-right leading-tight'>
-                                                {phpPrice != null ? (
-                                                    <>
-                                                        <span className='font-semibold'>
-                                                            ₱
-                                                            {phpPrice.toLocaleString(undefined, {
-                                                                minimumFractionDigits: 2,
-                                                            })}
-                                                        </span>
-                                                        <span className='text-xs text-muted-foreground'>
-                                                            {' '}
-                                                            (x{it.fx_multiplier})
-                                                        </span>
-                                                        {usdPrice != null && (
-                                                            <div className='text-sm text-muted-foreground'>
-                                                                $
-                                                                {usdPrice.toLocaleString(
-                                                                    undefined,
-                                                                    { minimumFractionDigits: 2 }
-                                                                )}{' '}
-                                                                USD
-                                                            </div>
-                                                        )}
-                                                    </>
-                                                ) : it.price_mode === 'fixed' ? (
-                                                    <>
-                                                        ₱
-                                                        {(
-                                                            it.display_price ??
-                                                            it.fixed_price ??
-                                                            0
-                                                        ).toLocaleString(undefined, {
-                                                            minimumFractionDigits: 2,
-                                                        })}
-                                                        <span className='text-[10px] text-muted-foreground'>
-                                                            {' '}
-                                                            (fixed)
-                                                        </span>
-                                                    </>
-                                                ) : usdPrice != null ? (
-                                                    <>
+                                    <span className='truncate text-right leading-tight'>
+                                        {phpPrice != null ? (
+                                            <>
+                                                <span className='font-semibold'>
+                                                    ₱
+                                                    {phpPrice.toLocaleString(undefined, {
+                                                        minimumFractionDigits: 2,
+                                                    })}
+                                                </span>
+                                                <span className='text-xs text-muted-foreground'>
+                                                    {' '}
+                                                    (x{it.fx_multiplier})
+                                                </span>
+                                                {usdPrice != null && (
+                                                    <div className='text-sm text-muted-foreground'>
                                                         $
                                                         {usdPrice.toLocaleString(undefined, {
                                                             minimumFractionDigits: 2,
                                                         })}{' '}
                                                         USD
-                                                        <div className='text-[10px] text-muted-foreground'>
-                                                            set multiplier to show ₱
-                                                        </div>
-                                                    </>
-                                                ) : (
-                                                    <span className='text-[10px] text-muted-foreground'>
-                                                        pricing…
-                                                    </span>
+                                                    </div>
                                                 )}
+                                            </>
+                                        ) : it.price_mode === 'fixed' ? (
+                                            <>
+                                                ₱
+                                                {(
+                                                    it.display_price ??
+                                                    it.fixed_price ??
+                                                    0
+                                                ).toLocaleString(undefined, {
+                                                    minimumFractionDigits: 2,
+                                                })}
+                                                <span className='text-[10px] text-muted-foreground'>
+                                                    {' '}
+                                                    (fixed)
+                                                </span>
+                                            </>
+                                        ) : usdPrice != null ? (
+                                            <>
+                                                $
+                                                {usdPrice.toLocaleString(undefined, {
+                                                    minimumFractionDigits: 2,
+                                                })}{' '}
+                                                USD
+                                                <div className='text-[10px] text-muted-foreground'>
+                                                    set multiplier to show ₱
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <span className='text-[10px] text-muted-foreground'>
+                                                pricing…
                                             </span>
-                                        </div>
-                                    </div>
+                                        )}
+                                    </span>
                                 </div>
-                            )
-                        })}
-                    </div>
-                </div>
-            ))}
+                            </div>
+                        </div>
+                    )
+                })}
+            </div>
+
+            {/* Bottom-right controls */}
+            <PageControls />
         </div>
     )
 }
