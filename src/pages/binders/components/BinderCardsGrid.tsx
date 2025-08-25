@@ -243,7 +243,14 @@ export default function BinderCardsGrid({
                                 <div className='mt-auto' />
 
                                 <div className='mt-2 flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground'>
-                                    <Badge variant='secondary' className='px-1 py-0 text-[10px]'>
+                                    <Badge
+                                        variant='secondary'
+                                        className={`px-2 py-0 text-[10px] ${
+                                            it.finish === 'foil'
+                                                ? 'bg-gradient-to-r from-blue-400 via-pink-500 to-yellow-500 text-white font-bold'
+                                                : ''
+                                        }`}
+                                    >
                                         {it.finish.replace('_', ' ')}
                                     </Badge>
                                     <Badge variant='outline' className='px-1 py-0 text-[10px]'>
