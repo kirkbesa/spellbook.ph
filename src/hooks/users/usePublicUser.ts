@@ -4,7 +4,7 @@ import type { Row } from '@/types/types'
 
 export type PublicUser = Pick<
     Row<'users'>,
-    'id' | 'username' | 'first_name' | 'last_name' | 'location' | 'image_url'
+    'id' | 'username' | 'first_name' | 'last_name' | 'location' | 'image_url' | 'isverified'
 >
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? ''

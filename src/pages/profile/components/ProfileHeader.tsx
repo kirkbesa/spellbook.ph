@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { Mail, MapPin, ShieldCheck, Star } from 'lucide-react'
+import { Mail, MapPin, ShieldCheck, ShieldX, Star } from 'lucide-react'
 import type { Profile } from '../types'
 import AvatarUploader from './AvatarUploader'
 import { toast } from 'sonner'
@@ -36,10 +36,15 @@ export default function ProfileHeader({ profile, onAvatarUploaded }: Props) {
                 <div className='flex-1'>
                     <div className='flex flex-wrap items-center gap-2'>
                         <h1 className='text-xl font-semibold'>{nameOrUsername}</h1>
-                        {verified && (
-                            <Badge variant='secondary' className='gap-1'>
+                        {verified ? (
+                            <Badge variant='secondary' className='gap-1 text-blue-500'>
                                 <ShieldCheck size={14} />
                                 Verified
+                            </Badge>
+                        ) : (
+                            <Badge variant='secondary' className='gap-1'>
+                                <ShieldX size={14} />
+                                Not yet verified
                             </Badge>
                         )}
                     </div>

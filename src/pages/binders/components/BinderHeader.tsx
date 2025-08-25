@@ -1,7 +1,7 @@
 // src/pages/binders/components/BinderHeader.tsx
 import * as React from 'react'
 import { Badge } from '@/components/ui/badge'
-import { MapPin } from 'lucide-react'
+import { BadgeCheckIcon, MapPin } from 'lucide-react'
 import type { Binder } from '@/hooks/binders/types'
 import { usePublicUser } from '@/hooks/users/usePublicUser'
 
@@ -17,6 +17,11 @@ export default function BinderHeader({ binder }: Props) {
         if (!owner) return '—'
         const full = [owner.first_name ?? '', owner.last_name ?? ''].filter(Boolean).join(' ')
         return full || owner.username || '—'
+    }, [owner])
+
+    const isVerified = React.useMemo(() => {
+        if (!owner) return false
+        return owner.isverified
     }, [owner])
 
     return (
@@ -71,7 +76,10 @@ export default function BinderHeader({ binder }: Props) {
 
                     {/* Name + location */}
                     <div className='min-w-0'>
-                        <div className='truncate text-sm font-medium'>{ownerName}</div>
+                        <div className='truncate text-sm font-medium space-x-1 flex items-center'>
+                            <span>{ownerName}</span>
+                            {isVerified && <BadgeCheckIcon className='text-blue-500' size={16} />}
+                        </div>
                         {owner?.location && (
                             <div className='flex items-center gap-1 truncate text-xs text-muted-foreground'>
                                 <MapPin size={12} />
