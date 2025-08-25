@@ -309,6 +309,11 @@ export default function BinderCardsGrid({
                                                         USD
                                                     </div>
                                                 )}
+                                                {it.price_mode === 'fixed' && (
+                                                    <div className='text-sm text-muted-foreground'>
+                                                        (fixed)
+                                                    </div>
+                                                )}
                                             </>
                                         ) : it.price_mode === 'fixed' ? (
                                             <>
@@ -320,10 +325,6 @@ export default function BinderCardsGrid({
                                                 ).toLocaleString(undefined, {
                                                     minimumFractionDigits: 2,
                                                 })}
-                                                <span className='text-[10px] text-muted-foreground'>
-                                                    {' '}
-                                                    (fixed)
-                                                </span>
                                             </>
                                         ) : usdPrice != null ? (
                                             <>
