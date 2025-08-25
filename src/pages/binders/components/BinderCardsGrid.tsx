@@ -251,7 +251,9 @@ export default function BinderCardsGrid({
                                         className={`px-2 py-0 text-[10px] ${
                                             it.finish === 'foil'
                                                 ? 'bg-gradient-to-r from-blue-400 via-pink-500 to-yellow-500 text-white font-bold'
-                                                : ''
+                                                : it.finish === 'etched'
+                                                  ? 'bg-gradient-to-r from-yellow-500 via-gray-500 to-blue-500 text-white font-bold'
+                                                  : ''
                                         }`}
                                     >
                                         {it.finish.replace('_', ' ')}
