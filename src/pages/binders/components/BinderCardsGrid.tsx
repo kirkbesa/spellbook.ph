@@ -3,9 +3,10 @@ import * as React from 'react'
 import type { BinderCard } from '@/hooks/binders/cardTypes'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Layers, ImageOff, SquareX, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Layers, ImageOff, Pencil, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { useRemoveBinderCard } from '@/hooks/binders/useRemoveBinderCard'
 import { toast } from 'sonner'
+import EditBinderCardModal from './EditBinderCardModal'
 
 type Props = {
     items: BinderCard[]
@@ -15,17 +16,19 @@ type Props = {
     isOwner: boolean
 }
 
-/** Image section that preserves aspect ratio and shows a top-right Remove button for owners. */
+/** Image section with Remove + Edit buttons for owners. */
 function CardImage({
     src,
     alt,
     onRemoveClick,
+    onEditClick, // NEW
     removing,
     isOwner,
 }: {
     src?: string | null
     alt: string
     onRemoveClick?: () => void
+    onEditClick?: () => void // NEW
     removing?: boolean
     isOwner: boolean
 }) {
@@ -34,21 +37,37 @@ function CardImage({
 
     return (
         <div className='mb-2 rounded-xl w-full overflow-hidden relative'>
-            {isOwner && onRemoveClick && (
-                <div className='absolute right-2 top-2 z-10'>
-                    <Button
-                        variant='destructive'
-                        size='icon'
-                        className='h-7 w-7'
-                        onClick={(e) => {
-                            e.stopPropagation()
-                            onRemoveClick()
-                        }}
-                        disabled={removing}
-                        title='Remove from binder'
-                    >
-                        <SquareX className='h-4 w-4' />
-                    </Button>
+            {isOwner && (
+                <div className='absolute right-2 top-2 z-10 flex flex-col gap-2'>
+                    {onRemoveClick && (
+                        <Button
+                            variant='destructive'
+                            size='icon'
+                            className='h-7 w-7'
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                onRemoveClick()
+                            }}
+                            disabled={removing}
+                            title='Remove from binder'
+                        >
+                            <X className='h-4 w-4' />
+                        </Button>
+                    )}
+                    {onEditClick && (
+                        <Button
+                            variant='secondary'
+                            size='icon'
+                            className='h-7 w-7'
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                onEditClick()
+                            }}
+                            title='Edit listing'
+                        >
+                            <Pencil className='h-4 w-4' />
+                        </Button>
+                    )}
                 </div>
             )}
 
@@ -82,7 +101,9 @@ export default function BinderCardsGrid({
     const [pageIndex, setPageIndex] = React.useState(0)
     const totalPages = Math.max(1, Math.ceil(items.length / pageSize))
 
-    // Clamp page when items change (e.g., after delete)
+    // NEW: edit modal state
+    const [editItem, setEditItem] = React.useState<BinderCard | null>(null)
+
     React.useEffect(() => {
         if (pageIndex > totalPages - 1) setPageIndex(totalPages - 1)
     }, [items.length, pageSize, totalPages, pageIndex])
@@ -129,7 +150,6 @@ export default function BinderCardsGrid({
 
     return (
         <div className='space-y-3'>
-            {/* Top-right controls */}
             <PageControls />
 
             <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 items-stretch'>
@@ -141,7 +161,6 @@ export default function BinderCardsGrid({
                         : ''
                     const setLogo = it.card?.set_icon_svg_uri ?? ''
 
-                    // USD base price by finish (for the small line)
                     const usdBase: number | null =
                         it.finish === 'foil'
                             ? (it.card?.scry_usd_foil ?? it.card?.scry_usd ?? null)
@@ -152,7 +171,6 @@ export default function BinderCardsGrid({
                                 null)
                               : (it.card?.scry_usd ?? null)
 
-                    // Decide PHP vs USD
                     let phpPrice: number | null = null
                     let usdPrice: number | null = null
                     if (it.price_mode === 'fixed') {
@@ -189,16 +207,15 @@ export default function BinderCardsGrid({
                     return (
                         <div key={it.id} className='h-full'>
                             <div className='flex h-full flex-col rounded-lg bg-card p-2 transition-transform hover:scale-[1.01]'>
-                                {/* Image + remove */}
                                 <CardImage
                                     src={img}
                                     alt={name}
                                     onRemoveClick={handleRemove}
+                                    onEditClick={() => setEditItem(it)} // NEW
                                     removing={removingId === it.id}
                                     isOwner={isOwner}
                                 />
 
-                                {/* Title */}
                                 <div className='flex justify-between gap-2'>
                                     <div className='min-w-0'>
                                         <div className='text-sm font-medium whitespace-normal break-words leading-snug'>
@@ -225,7 +242,6 @@ export default function BinderCardsGrid({
 
                                 <div className='mt-auto' />
 
-                                {/* Specs */}
                                 <div className='mt-2 flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground'>
                                     <Badge variant='secondary' className='px-1 py-0 text-[10px]'>
                                         {it.finish.replace('_', ' ')}
@@ -248,7 +264,6 @@ export default function BinderCardsGrid({
                                     )}
                                 </div>
 
-                                {/* Qty / Price */}
                                 <div className='mt-2 flex items-center justify-between text-md'>
                                     <span className='inline-flex items-center gap-1'>
                                         <Layers className='h-3.5 w-3.5' />
@@ -269,10 +284,12 @@ export default function BinderCardsGrid({
                                                         minimumFractionDigits: 2,
                                                     })}
                                                 </span>
-                                                <span className='text-xs text-muted-foreground'>
-                                                    {' '}
-                                                    (x{it.fx_multiplier})
-                                                </span>
+                                                {it.price_mode === 'scryfall' && (
+                                                    <span className='text-xs text-muted-foreground'>
+                                                        {' '}
+                                                        (x{it.fx_multiplier})
+                                                    </span>
+                                                )}
                                                 {usdPrice != null && (
                                                     <div className='text-sm text-muted-foreground'>
                                                         $
@@ -322,8 +339,15 @@ export default function BinderCardsGrid({
                 })}
             </div>
 
-            {/* Bottom-right controls */}
             <PageControls />
+
+            {/* EDIT MODAL */}
+            <EditBinderCardModal
+                open={!!editItem}
+                item={editItem}
+                onClose={() => setEditItem(null)}
+                onSaved={refresh}
+            />
         </div>
     )
 }
