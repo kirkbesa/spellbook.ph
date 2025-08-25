@@ -15,7 +15,7 @@ type Props = {
 
 export default function ShareLinkButton({
     url,
-    label = 'Share binder',
+    label = 'Copy Binder Link',
     className,
     disabled,
     disabledHint,

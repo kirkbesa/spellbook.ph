@@ -6,6 +6,11 @@ import { toast } from 'sonner'
 import BackButton from '@/components/common/BackButton'
 import { useRouter } from '@tanstack/react-router'
 
+// Reuse your card search UI + hook
+import CardSearch from '@/pages/binders/components/CardSearch'
+import { useCardSearch } from '@/hooks/cards/useCardSearch'
+import type { SearchResult } from '@/pages/binders/components/types'
+
 const API_BASE = import.meta.env.VITE_API_BASE ?? ''
 
 type Props = {
@@ -14,11 +19,36 @@ type Props = {
 
 export default function BinderSettingsPage({ binder }: Props) {
     const router = useRouter()
-
     const [name, setName] = React.useState(binder.name)
     const [privacy, setPrivacy] = React.useState<Binder['privacy']>(binder.privacy)
-    const [color, setColor] = React.useState(binder.color_hex ?? '')
+
+    // Cover art (Scryfall art-crop URL) — default from binder
+    const [coverUrl, setCoverUrl] = React.useState<string>(binder.image_url ?? '')
     const [saving, setSaving] = React.useState(false)
+
+    // Search state for picking cover
+    const [q, setQ] = React.useState('')
+    const { results, loading, search, setResults } = useCardSearch()
+
+    // Debounced search
+    React.useEffect(() => {
+        const t = setTimeout(() => search(q), 250)
+        return () => clearTimeout(t)
+    }, [q, search])
+
+    const onPickCover = (r: SearchResult) => {
+        // Build Scryfall art-crop image URL from the card id
+        // This returns the actual image directly (no JSON), perfect to store in image_url
+        const artUrl = `https://api.scryfall.com/cards/${r.card.scryfall_id}?format=image&version=art_crop`
+        setCoverUrl(artUrl)
+        setResults([]) // close suggestions
+        toast.success('Cover art selected')
+    }
+
+    const onClearCover = () => {
+        setCoverUrl('')
+        toast.message('Cover art cleared')
+    }
 
     const onSave = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -37,7 +67,8 @@ export default function BinderSettingsPage({ binder }: Props) {
                 body: JSON.stringify({
                     name,
                     privacy,
-                    color_hex: color || null,
+                    image_url: coverUrl || null, // ← store chosen art-crop URL or null
+                    // color_hex: null, // optional: if you want to explicitly clear legacy color
                 }),
             })
 
@@ -47,7 +78,6 @@ export default function BinderSettingsPage({ binder }: Props) {
             }
 
             await router.invalidate()
-
             toast.success('Binder updated')
         } catch (err) {
             toast.error(err instanceof Error ? err.message : 'Failed to update binder')
@@ -60,7 +90,9 @@ export default function BinderSettingsPage({ binder }: Props) {
         <div className='mx-auto w-full max-w-3xl space-y-6'>
             <BackButton fallbackTo='/binders' />
             <h1 className='text-xl font-semibold'>Binder Settings</h1>
+
             <form onSubmit={onSave} className='space-y-4 rounded-lg border p-4'>
+                {/* Name / Privacy */}
                 <div className='space-y-1'>
                     <label className='text-sm font-medium'>Name</label>
                     <input
@@ -84,14 +116,65 @@ export default function BinderSettingsPage({ binder }: Props) {
                     </select>
                 </div>
 
-                <div className='space-y-1'>
-                    <label className='text-sm font-medium'>Color (hex)</label>
-                    <input
-                        className='w-full rounded-md border px-3 py-2 text-sm'
-                        value={color}
-                        onChange={(e) => setColor(e.target.value)}
-                        placeholder='#aabbcc'
-                    />
+                {/* Cover preview */}
+                <div className='space-y-2'>
+                    <label className='text-sm font-medium'>Cover art</label>
+                    <div className='rounded-lg border'>
+                        <div className='relative h-48 w-full overflow-hidden rounded-t-lg bg-muted'>
+                            {coverUrl ? (
+                                <>
+                                    <img
+                                        src={coverUrl}
+                                        alt=''
+                                        className='h-full w-full object-cover object-[50%_25%]'
+                                        // tweak focus using object-position utilities if you need, e.g. object-[50%_20%]
+                                    />
+                                    {/* bottom fade → background */}
+                                    <div className='pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-b from-transparent to-[hsl(var(--background))]' />
+                                </>
+                            ) : (
+                                <div className='flex h-full w-full items-center justify-center text-xs text-muted-foreground'>
+                                    No cover selected
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Picker row */}
+                        <div className='grid gap-3 p-3 sm:grid-cols-[1fr_auto_auto]'>
+                            <div>
+                                <CardSearch
+                                    value={q}
+                                    onChange={(v) => {
+                                        setQ(v)
+                                        if (!v) setResults([])
+                                    }}
+                                    loading={loading}
+                                    results={results}
+                                    onPick={onPickCover}
+                                    placeholder='Search a card to use its art…'
+                                />
+                            </div>
+
+                            <button
+                                type='button'
+                                onClick={onClearCover}
+                                className='h-9 rounded-md border px-3 text-sm hover:bg-accent disabled:opacity-50'
+                                disabled={!coverUrl}
+                            >
+                                Clear cover
+                            </button>
+
+                            <button
+                                type='button'
+                                onClick={() => setCoverUrl(coverUrl)} // noop; left as placeholder if you add adjustments later
+                                className='h-9 rounded-md border px-3 text-sm hover:bg-accent disabled:opacity-50'
+                                disabled={!coverUrl}
+                                title='(Optional) Save after adjusting position if you add that feature'
+                            >
+                                Keep as shown
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <div className='flex items-center gap-2'>
