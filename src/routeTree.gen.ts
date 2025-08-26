@@ -16,6 +16,7 @@ import { Route as AuthRegisterRouteImport } from './routes/_auth/register'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as AppUIndexRouteImport } from './routes/_app/u/index'
 import { Route as AppProfileIndexRouteImport } from './routes/_app/profile/index'
+import { Route as AppNotificationsIndexRouteImport } from './routes/_app/notifications/index'
 import { Route as AppChatsIndexRouteImport } from './routes/_app/chats/index'
 import { Route as AppBindersIndexRouteImport } from './routes/_app/binders/index'
 import { Route as AuthAuthCallbackRouteImport } from './routes/_auth/auth/callback'
@@ -55,6 +56,11 @@ const AppUIndexRoute = AppUIndexRouteImport.update({
 const AppProfileIndexRoute = AppProfileIndexRouteImport.update({
   id: '/profile/',
   path: '/profile/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppNotificationsIndexRoute = AppNotificationsIndexRouteImport.update({
+  id: '/notifications/',
+  path: '/notifications/',
   getParentRoute: () => AppRoute,
 } as any)
 const AppChatsIndexRoute = AppChatsIndexRouteImport.update({
@@ -103,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/auth/callback': typeof AuthAuthCallbackRoute
   '/binders': typeof AppBindersIndexRoute
   '/chats': typeof AppChatsIndexRoute
+  '/notifications': typeof AppNotificationsIndexRoute
   '/profile': typeof AppProfileIndexRoute
   '/u': typeof AppUIndexRoute
   '/binders/$binderId/settings': typeof AppBindersBinderIdSettingsRoute
@@ -117,6 +124,7 @@ export interface FileRoutesByTo {
   '/auth/callback': typeof AuthAuthCallbackRoute
   '/binders': typeof AppBindersIndexRoute
   '/chats': typeof AppChatsIndexRoute
+  '/notifications': typeof AppNotificationsIndexRoute
   '/profile': typeof AppProfileIndexRoute
   '/u': typeof AppUIndexRoute
   '/binders/$binderId/settings': typeof AppBindersBinderIdSettingsRoute
@@ -134,6 +142,7 @@ export interface FileRoutesById {
   '/_auth/auth/callback': typeof AuthAuthCallbackRoute
   '/_app/binders/': typeof AppBindersIndexRoute
   '/_app/chats/': typeof AppChatsIndexRoute
+  '/_app/notifications/': typeof AppNotificationsIndexRoute
   '/_app/profile/': typeof AppProfileIndexRoute
   '/_app/u/': typeof AppUIndexRoute
   '/_app/binders/$binderId/settings': typeof AppBindersBinderIdSettingsRoute
@@ -150,6 +159,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/binders'
     | '/chats'
+    | '/notifications'
     | '/profile'
     | '/u'
     | '/binders/$binderId/settings'
@@ -164,6 +174,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/binders'
     | '/chats'
+    | '/notifications'
     | '/profile'
     | '/u'
     | '/binders/$binderId/settings'
@@ -180,6 +191,7 @@ export interface FileRouteTypes {
     | '/_auth/auth/callback'
     | '/_app/binders/'
     | '/_app/chats/'
+    | '/_app/notifications/'
     | '/_app/profile/'
     | '/_app/u/'
     | '/_app/binders/$binderId/settings'
@@ -243,6 +255,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProfileIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/notifications/': {
+      id: '/_app/notifications/'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof AppNotificationsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/chats/': {
       id: '/_app/chats/'
       path: '/chats'
@@ -300,6 +319,7 @@ interface AppRouteChildren {
   AppUUserIdRoute: typeof AppUUserIdRoute
   AppBindersIndexRoute: typeof AppBindersIndexRoute
   AppChatsIndexRoute: typeof AppChatsIndexRoute
+  AppNotificationsIndexRoute: typeof AppNotificationsIndexRoute
   AppProfileIndexRoute: typeof AppProfileIndexRoute
   AppUIndexRoute: typeof AppUIndexRoute
   AppBindersBinderIdSettingsRoute: typeof AppBindersBinderIdSettingsRoute
@@ -311,6 +331,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppUUserIdRoute: AppUUserIdRoute,
   AppBindersIndexRoute: AppBindersIndexRoute,
   AppChatsIndexRoute: AppChatsIndexRoute,
+  AppNotificationsIndexRoute: AppNotificationsIndexRoute,
   AppProfileIndexRoute: AppProfileIndexRoute,
   AppUIndexRoute: AppUIndexRoute,
   AppBindersBinderIdSettingsRoute: AppBindersBinderIdSettingsRoute,

@@ -9,6 +9,7 @@ import {
     UserPlus,
     Menu,
     FolderClosed,
+    Bell,
 } from 'lucide-react'
 
 import {
@@ -28,6 +29,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { useLogout } from '@/hooks/auth/useLogout'
 import { useAuth } from '@/providers/AuthProvider'
+import { useUnreadMessageCount } from '@/hooks/notifications/useUnreadMessageCount'
 
 type NavItem = {
     to: string
@@ -40,6 +42,7 @@ const authedItems: NavItem[] = [
     { to: '/', label: 'Home', icon: Home, exact: true },
     { to: '/binders', label: 'My Binders', icon: FolderClosed },
     { to: '/chats', label: 'Chats', icon: MessageSquare },
+    { to: '/notifications', label: 'Notifications', icon: Bell },
     { to: '/profile', label: 'Profile', icon: User },
 ]
 
@@ -59,6 +62,16 @@ export default function Nav() {
     const activeStyles = 'data-[active=true]:bg-accent data-[active=true]:text-accent-foreground'
     const underline =
         'after:absolute after:-bottom-1 after:left-2 after:right-2 after:h-0.5 after:origin-center after:scale-x-0 after:rounded-full after:bg-primary after:transition-transform hover:after:scale-x-100 data-[active=true]:after:scale-x-100'
+
+    // ⬇️ unread messages for chats (0 if logged out)
+    const { count: unread } = useUnreadMessageCount(user?.id)
+
+    // tiny badge component for reuse
+    const BadgeDot = ({ value }: { value: number }) => (
+        <span className='absolute top-2 right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-medium text-white'>
+            {value > 99 ? '99+' : value}
+        </span>
+    )
 
     return (
         <nav
@@ -90,6 +103,10 @@ export default function Nav() {
                                         >
                                             <Icon size={16} />
                                             {label}
+                                            {/* badge only on Chats and only when unread > 0 */}
+                                            {to === '/chats' && unread > 0 ? (
+                                                <BadgeDot value={unread} />
+                                            ) : null}
                                         </RouterLink>
                                     </NavigationMenuLink>
                                 </NavigationMenuItem>
@@ -138,15 +155,20 @@ export default function Nav() {
                                         <RouterLink
                                             to={to}
                                             activeOptions={exact ? { exact: true } : undefined}
-                                            className='flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                                            className='relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                                             activeProps={{
                                                 className:
-                                                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm bg-accent text-accent-foreground',
+                                                    'relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm bg-accent text-accent-foreground',
                                             }}
                                             aria-label={label}
                                         >
                                             <Icon size={18} />
                                             {label}
+                                            {to === '/chats' && unread > 0 ? (
+                                                <span className='absolute right-2 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-medium text-white'>
+                                                    {unread > 99 ? '99+' : unread}
+                                                </span>
+                                            ) : null}
                                         </RouterLink>
                                     </SheetClose>
                                 ))}
