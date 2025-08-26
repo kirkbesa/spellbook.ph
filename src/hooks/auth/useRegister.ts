@@ -7,45 +7,61 @@ type RegisterOptions = {
     username?: string
 }
 
+type RegisterResult = { ok: true; needsEmailConfirmation: boolean } | { ok: false; error: string }
+
 export function useRegister() {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
     const register = useCallback(
-        async (email: string, password: string, opts: RegisterOptions = {}) => {
-            if (loading) return { ok: false, error: 'Already signing up' as const }
+        async (
+            email: string,
+            password: string,
+            opts: RegisterOptions = {}
+        ): Promise<RegisterResult> => {
+            if (loading) return { ok: false, error: 'Already signing up' }
             setLoading(true)
             setError(null)
 
             try {
                 if (!email || !password) throw new Error('Please fill in all fields.')
 
-                const options: NonNullable<Parameters<typeof supabase.auth.signUp>[0]['options']> =
-                    {
-                        emailRedirectTo: opts.emailRedirectTo,
+                // Provide a reliable redirect (must be allowlisted in Supabase Auth settings)
+                const emailRedirectTo =
+                    opts.emailRedirectTo || `${window.location.origin}/auth/callback`
+
+                const { data, error: signUpErr } = await supabase.auth.signUp({
+                    email,
+                    password,
+                    options: {
+                        emailRedirectTo,
                         ...(opts.username?.trim()
                             ? { data: { username: opts.username.trim() } }
                             : {}),
-                    }
-
-                const { error } = await supabase.auth.signUp({
-                    email,
-                    password,
-                    options,
+                    },
                 })
 
-                if (error) {
-                    const msg = error.message || 'Sign up failed.'
+                if (signUpErr) {
+                    const msg = signUpErr.message || 'Sign up failed.'
                     setError(msg)
-                    return { ok: false as const, error: msg }
+                    return { ok: false, error: msg }
                 }
 
-                // If email confirmations are on, user must click the email link to get a session.
-                return { ok: true as const }
+                // Some misconfigurations can return no user — treat this as an error so the UI doesn’t show success.
+                if (!data?.user) {
+                    const msg =
+                        'Sign up succeeded but no user was returned. Check your SUPABASE_URL / anon key and Auth settings.'
+                    setError(msg)
+                    return { ok: false, error: msg }
+                }
+
+                // If email confirmations are enabled, session will be null and user must verify via email
+                const needsEmailConfirmation = !data.session
+                return { ok: true, needsEmailConfirmation }
             } catch (e) {
                 const msg = e instanceof Error ? e.message : 'Something went wrong signing up.'
                 setError(msg)
-                return { ok: false as const, error: msg }
+                return { ok: false, error: msg }
             } finally {
                 setLoading(false)
             }

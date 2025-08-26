@@ -8,14 +8,17 @@ import { toast } from 'sonner'
 import { Label } from '@/components/ui/label'
 import EmailConfirmation from './EmailConfirmation'
 import { useUsernameAvailability } from '@/hooks/auth/useUsernameAvailability'
+import { supabase } from '@/lib/supabase/supabaseClient'
 
 export default function RegisterPage() {
     const [username, setUsername] = useState('')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
+
     const { register, loading, error, setError } = useRegister()
     const [showEmailConfirmation, setShowEmailConfirmation] = useState(false)
+    const [confirmedEmail, setConfirmedEmail] = useState<string>('')
 
     const { valid, checking, available } = useUsernameAvailability(username)
 
@@ -23,8 +26,6 @@ export default function RegisterPage() {
         !!email &&
         !!password &&
         password === confirmPassword &&
-        // allow submit if availability is true OR unknown (null) but format is valid;
-        // you can make this stricter if you want:
         valid &&
         available !== false &&
         !loading
@@ -52,29 +53,54 @@ export default function RegisterPage() {
 
         const origin = typeof window !== 'undefined' ? window.location.origin : undefined
         const res = await register(email, password, {
-            emailRedirectTo: origin ? `${origin}/auth/callback` : undefined, // ← changed key
+            emailRedirectTo: origin ? `${origin}/auth/callback` : undefined,
             username: username.trim(),
         })
 
-        if (res.ok) {
-            toast.success('Check your email to confirm your account.')
+        if (!res.ok) {
+            if (res.error?.toLowerCase().includes('unique')) {
+                setError('That username just got taken. Pick another.')
+            }
+            return
+        }
+
+        if (res.needsEmailConfirmation) {
+            // Show "check your email" UI
             setShowEmailConfirmation(true)
+            setConfirmedEmail(email)
+            toast.success('Check your email to confirm your account.')
+            // Clear inputs
             setUsername('')
             setEmail('')
             setPassword('')
             setConfirmPassword('')
-        } else if (res.error?.toLowerCase().includes('unique')) {
-            // catch rare race against another user taking it
-            setError('That username just got taken. Pick another.')
+        } else {
+            // Auto-confirm is ON → you already have a session
+            toast.success('Account created! You are now signed in.')
+            // Optional: redirect the user
+            // window.location.href = '/'
+        }
+    }
+
+    const resend = async () => {
+        if (!confirmedEmail) return
+        const { error: resendErr } = await supabase.auth.resend({
+            type: 'signup',
+            email: confirmedEmail,
+        })
+        if (resendErr) {
+            toast.error(resendErr.message || 'Failed to resend email.')
+        } else {
+            toast.success('Verification email sent.')
         }
     }
 
     return (
-        <div className='min-w-full md:min-w-md max-h-auto mx-auto bg-white rounded-lg flex flex-col gap-6'>
+        <div className='min-w-full md:min-w-md mx-auto bg-white rounded-lg flex flex-col gap-6'>
             {!showEmailConfirmation ? (
                 <>
                     <h1 className='text-2xl font-bold text-center'>Create an Account</h1>
-                    <form onSubmit={handleSubmit} className='space-y-4'>
+                    <form onSubmit={handleSubmit} className='space-y-4' noValidate>
                         {/* Email */}
                         <div>
                             <Label htmlFor='email' className='block text-sm font-medium mb-1'>
@@ -88,6 +114,7 @@ export default function RegisterPage() {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 disabled={loading}
+                                autoComplete='email'
                             />
                         </div>
 
@@ -104,7 +131,7 @@ export default function RegisterPage() {
                                         <span className='text-red-600'>Username is taken.</span>
                                     )}
                                     {!checking && username && valid && available && (
-                                        <span className='text-green-600'>Username Available!</span>
+                                        <span className='text-green-600'>Username available!</span>
                                     )}
                                     {!valid && username && (
                                         <span className='text-red-600'>
@@ -119,6 +146,7 @@ export default function RegisterPage() {
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
                                 disabled={loading}
+                                autoComplete='username'
                                 className={
                                     username
                                         ? available === false
@@ -129,7 +157,6 @@ export default function RegisterPage() {
                                         : undefined
                                 }
                             />
-                            <p className='text-xs mt-1'></p>
                         </div>
 
                         {/* Password */}
@@ -145,9 +172,14 @@ export default function RegisterPage() {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 disabled={loading}
+                                autoComplete='new-password'
                             />
+                            <p className='mt-1 text-xs text-muted-foreground'>
+                                At least 8 characters.
+                            </p>
                         </div>
 
+                        {/* Confirm Password */}
                         <div>
                             <Label
                                 htmlFor='confirm_password'
@@ -163,11 +195,16 @@ export default function RegisterPage() {
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
                                 disabled={loading}
+                                autoComplete='new-password'
                             />
                         </div>
 
                         {error && (
-                            <p className='text-sm justify-self-center text-red-500' role='alert'>
+                            <p
+                                className='text-sm justify-self-center text-red-500'
+                                role='alert'
+                                aria-live='polite'
+                            >
                                 {error}
                             </p>
                         )}
@@ -178,7 +215,14 @@ export default function RegisterPage() {
                     </form>
                 </>
             ) : (
-                <EmailConfirmation />
+                <div className='space-y-4'>
+                    <EmailConfirmation email={confirmedEmail} />
+                    <div className='w-full flex items-center justify-center'>
+                        <Button variant='outline' onClick={resend} disabled={loading}>
+                            Resend verification email
+                        </Button>
+                    </div>
+                </div>
             )}
 
             <Link
