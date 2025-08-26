@@ -19,6 +19,7 @@ import {
     SheetTrigger,
     SheetClose,
 } from '@/components/ui/sheet'
+import { Link } from '@tanstack/react-router'
 
 // ---------- helpers (time + grouping) ----------
 function formatTime(ts: string | number | Date) {
@@ -458,9 +459,15 @@ export default function ChatsPage() {
 
             {/* Chat panel */}
             <section className='col-span-12 md:col-span-9 rounded-lg border flex flex-1 min-h-0 flex-col'>
-                <div className='border-b p-3 text-sm font-medium'>
-                    {activePeer ? `@${activePeer.username}` : 'Conversation'}
-                </div>
+                <Link to={`/u/$userId`} params={{ userId: activePeer?.user_id as string }}>
+                    <div className='border-b p-3 flex flex-col'>
+                        <span className='text-sm font-medium'>
+                            {activePeer ? `@${activePeer.username}` : 'Conversation'}
+                        </span>
+
+                        <span className='text-muted-foreground text-xs'>View Profile</span>
+                    </div>
+                </Link>
 
                 {/* Scrollable list with lazy load on top */}
                 <div
