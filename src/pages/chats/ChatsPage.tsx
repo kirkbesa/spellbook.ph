@@ -10,6 +10,15 @@ import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import UserSearchBox from './UserSearchBox'
 import { toast } from 'sonner'
+import { Users } from 'lucide-react'
+import {
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+    SheetTrigger,
+    SheetClose,
+} from '@/components/ui/sheet'
 
 // ---------- helpers (time + grouping) ----------
 function formatTime(ts: string | number | Date) {
@@ -67,6 +76,7 @@ const PAGE_SIZE = 30
 export default function ChatsPage() {
     const [me, setMe] = React.useState<string | null>(null)
     const [active, setActive] = React.useState<string | null>(null)
+    const [drawerOpen, setDrawerOpen] = React.useState(false)
 
     React.useEffect(() => {
         supabase.auth.getUser().then(({ data }) => setMe(data.user?.id ?? null))
@@ -251,13 +261,14 @@ export default function ChatsPage() {
             const convId = await startConversationByUsername(uname)
             setActive(convId)
             await refreshConvs()
+            setDrawerOpen(false) // if started via mobile bar, ensure drawer is closed
         } catch (e) {
             const msg = e instanceof Error ? e.message : 'Failed to start conversation'
             toast.error(msg)
         }
     }
 
-    // sidebar item: last message time label
+    // sidebar/drawer item: last message time label
     function lastMsgWhenLabel(iso?: string | null) {
         if (!iso) return 'No messages yet'
         const d = new Date(iso)
@@ -304,15 +315,15 @@ export default function ChatsPage() {
         [active, me]
     )
 
+    // ----- UI -----
     return (
         <div
-            className='grid min-h-[calc(100dvh-120px)] max-h-[calc(100dvh-120px)] grid-cols-12 gap-4'
-            style={{ contain: 'layout paint size' }} // helps some browsers with overflow performance
+            className='flex flex-col md:grid min-h-[calc(100dvh-120px)] max-h-[calc(100dvh-120px)] overflow-hidden grid-cols-12 gap-4'
+            style={{ contain: 'layout paint size' }}
         >
-            {/* Sidebar */}
-            <aside className='col-span-4 md:col-span-3 rounded-lg border p-3 flex min-h-0 flex-col'>
+            {/* Desktop sidebar */}
+            <aside className='hidden md:flex col-span-4 md:col-span-3 rounded-lg border p-3 min-h-0 flex-col'>
                 <UserSearchBox myUserId={me ?? undefined} onPick={startWithUser} />
-
                 <div className='mt-3 flex-1 min-h-0 overflow-auto space-y-1'>
                     {loadingConvs ? (
                         <div className='text-sm text-muted-foreground'>Loading…</div>
@@ -363,8 +374,90 @@ export default function ChatsPage() {
                 </div>
             </aside>
 
+            {/* Mobile top bar (search + drawer trigger) */}
+            <div className='md:hidden col-span-12 shrink-0'>
+                <div className='flex items-center gap-2'>
+                    <div className='flex-1'>
+                        <UserSearchBox myUserId={me ?? undefined} onPick={startWithUser} />
+                    </div>
+
+                    <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+                        <SheetTrigger asChild>
+                            <Button variant='outline' size='icon' aria-label='Open conversations'>
+                                <Users size={18} />
+                            </Button>
+                        </SheetTrigger>
+                        <SheetContent side='right' className='w-80'>
+                            <SheetHeader>
+                                <SheetTitle>Conversations</SheetTitle>
+                            </SheetHeader>
+                            <div className='mt-3 flex flex-col gap-2'>
+                                {loadingConvs ? (
+                                    <div className='text-sm text-muted-foreground'>Loading…</div>
+                                ) : convs.length === 0 ? (
+                                    <div className='text-sm text-muted-foreground'>
+                                        No conversations yet
+                                    </div>
+                                ) : (
+                                    [...convs]
+                                        .sort((a, b) => {
+                                            const ta = a.last_message_at
+                                                ? Date.parse(a.last_message_at)
+                                                : 0
+                                            const tb = b.last_message_at
+                                                ? Date.parse(b.last_message_at)
+                                                : 0
+                                            return tb - ta
+                                        })
+                                        .map((c) => {
+                                            const peer = peerOf(c)
+                                            return (
+                                                <SheetClose asChild key={c.id}>
+                                                    <button
+                                                        className={cn(
+                                                            'w-full rounded-md border px-3 py-2 text-left hover:bg-accent',
+                                                            active === c.id && 'bg-accent'
+                                                        )}
+                                                        onClick={() => {
+                                                            setActive(c.id)
+                                                            setDrawerOpen(false)
+                                                        }}
+                                                    >
+                                                        <div className='flex items-center gap-2'>
+                                                            <img
+                                                                src={peer?.image_url ?? ''}
+                                                                onError={(e) =>
+                                                                    ((
+                                                                        e.currentTarget as HTMLImageElement
+                                                                    ).style.display = 'none')
+                                                                }
+                                                                className='h-8 w-8 rounded-full border object-cover'
+                                                                alt=''
+                                                            />
+                                                            <div className='min-w-0'>
+                                                                <div className='truncate text-sm font-medium'>
+                                                                    @{peer?.username ?? 'unknown'}
+                                                                </div>
+                                                                <div className='truncate text-xs text-muted-foreground'>
+                                                                    {lastMsgWhenLabel(
+                                                                        c.last_message_at
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </button>
+                                                </SheetClose>
+                                            )
+                                        })
+                                )}
+                            </div>
+                        </SheetContent>
+                    </Sheet>
+                </div>
+            </div>
+
             {/* Chat panel */}
-            <section className='col-span-8 md:col-span-9 rounded-lg border flex min-h-0 flex-col'>
+            <section className='col-span-12 md:col-span-9 rounded-lg border flex flex-1 min-h-0 flex-col'>
                 <div className='border-b p-3 text-sm font-medium'>
                     {activePeer ? `@${activePeer.username}` : 'Conversation'}
                 </div>
@@ -403,7 +496,7 @@ export default function ChatsPage() {
                                             <div
                                                 key={m.id}
                                                 className={cn(
-                                                    'max-w-[45%] rounded-lg px-3 py-2 text-sm',
+                                                    'max-w-[75%] md:max-w-[45%] rounded-lg px-3 py-2 text-sm',
                                                     mine
                                                         ? 'ml-auto bg-primary text-primary-foreground'
                                                         : 'mr-auto bg-muted'
@@ -434,7 +527,7 @@ export default function ChatsPage() {
                     onSend={async (text) => {
                         if (!text.trim()) return
                         try {
-                            await send(text) // includes sender_id now
+                            await send(text) // includes sender_id
                         } catch (e) {
                             const msg = e instanceof Error ? e.message : 'Failed to send'
                             toast.error(msg)
