@@ -52,7 +52,7 @@ export default function BinderHeader({ binder, isOwner }: Props) {
                     <img
                         src={binder.image_url}
                         alt=''
-                        className='h-full w-full object-cover object-[50%_25%]'
+                        className='h-full w-full object-cover object-[50%_20%]'
                     />
                     <div className='pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-white dark:to-neutral-950' />
                 </div>

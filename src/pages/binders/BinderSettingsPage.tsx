@@ -138,7 +138,7 @@ export default function BinderSettingsPage({ binder }: Props) {
                                     <img
                                         src={coverUrl}
                                         alt=''
-                                        className='h-full w-full object-cover object-[50%_25%]'
+                                        className='h-full w-full object-cover object-[50%_20%]'
                                         // tweak focus using object-position utilities if you need, e.g. object-[50%_20%]
                                     />
                                     {/* bottom fade → background */}

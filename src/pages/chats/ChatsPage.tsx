@@ -460,12 +460,24 @@ export default function ChatsPage() {
             {/* Chat panel */}
             <section className='col-span-12 md:col-span-9 rounded-lg border flex flex-1 min-h-0 flex-col'>
                 <Link to={`/u/$userId`} params={{ userId: activePeer?.user_id as string }}>
-                    <div className='border-b p-3 flex flex-col'>
-                        <span className='text-sm font-medium'>
-                            {activePeer ? `@${activePeer.username}` : 'Conversation'}
-                        </span>
+                    <div className='flex items-center px-2 border-b'>
+                        <div className='relative h-10 w-10 overflow-hidden rounded-full border bg-muted'>
+                            {activePeer?.image_url && (
+                                <img
+                                    src={activePeer?.image_url}
+                                    alt='Owner avatar'
+                                    className='h-full w-full object-cover'
+                                    draggable={false}
+                                />
+                            )}
+                        </div>
+                        <div className='p-3 flex flex-col'>
+                            <span className='text-sm font-medium'>
+                                {activePeer ? `@${activePeer.username}` : 'Conversation'}
+                            </span>
 
-                        <span className='text-muted-foreground text-xs'>View Profile</span>
+                            <span className='text-muted-foreground text-xs'>View Profile</span>
+                        </div>
                     </div>
                 </Link>
 
