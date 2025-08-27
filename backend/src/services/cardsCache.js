@@ -1,8 +1,12 @@
 // backend/src/services/cardsCache.js
 import { admin } from '../lib/supabase/supabaseAdminClient.js'
-
+// --- at top (optional but useful) ---
 const DEFAULT_STALE_DAYS = 14
-const setIconCache = new Map() // Map<SET_CODE (UPPERCASE), icon_svg_uri | null>
+const setIconCache = new Map()
+
+// Simple counters so you can see Scryfall pressure in logs if you want
+let scryfallHits = { cardsSearch: 0, sets: 0 }
+export const getScryfallHitCounts = () => ({ ...scryfallHits })
 
 export async function ensureFreshPrintsForOracle(
     oracleId,
@@ -11,22 +15,50 @@ export async function ensureFreshPrintsForOracle(
 ) {
     if (!oracleId) return
 
-    const { data: meta } = await admin
+    const cutoffISO = new Date(Date.now() - staleDays * 864e5).toISOString()
+
+    // Read current freshness
+    const { data: meta, error: readErr } = await admin
         .from('oracles')
         .select('oracle_id, last_synced_at')
         .eq('oracle_id', oracleId)
         .maybeSingle()
+    if (readErr) {
+        console.warn('[ensureFresh] read error', readErr)
+        return
+    }
 
-    const stale =
-        !meta?.last_synced_at || Date.now() - Date.parse(meta.last_synced_at) > staleDays * 864e5
+    const fresh = meta?.last_synced_at && Date.parse(meta.last_synced_at) > Date.parse(cutoffISO)
+    if (fresh) {
+        // already fresh; nothing to do
+        return
+    }
 
-    if (!stale) return
+    // --- Lease: only one worker refreshes a stale oracle ---
+    const { data: leased, error: leaseErr } = await admin
+        .from('oracles')
+        .update({ last_synced_at: new Date().toISOString() })
+        .eq('oracle_id', oracleId)
+        .or(`last_synced_at.is.null,last_synced_at.lt.${cutoffISO}`)
+        .select('oracle_id')
+        .maybeSingle()
 
+    if (leaseErr) {
+        console.warn('[ensureFresh] lease error', leaseErr)
+        return
+    }
+    if (!leased) {
+        // someone else just leased/refreshed it
+        return
+    }
+
+    console.log('[ensureFresh] lease acquired → warming', oracleId)
     await warmCachePrintsByOracle(oracleId)
-    await refreshOracleMeta(oracleId, oracleName || null) // only writes name if provided/derived
+    await refreshOracleMeta(oracleId, oracleName || null)
 }
 
 const num = (v) => (v == null || v === '' ? null : Number(v))
+
 export async function warmCachePrintsByOracle(oracleId) {
     console.log('[warm] start oracle:', oracleId)
 
@@ -40,6 +72,7 @@ export async function warmCachePrintsByOracle(oracleId) {
     const setCodes = new Set()
 
     while (next) {
+        scryfallHits.cardsSearch++
         const resp = await fetch(next)
         if (!resp.ok) {
             const text = await resp.text().catch(() => '')
@@ -64,12 +97,11 @@ export async function warmCachePrintsByOracle(oracleId) {
                 image_small: c.image_uris?.small ?? null,
                 image_normal: c.image_uris?.normal ?? null,
                 tcgplayer_product_id: c.tcgplayer_id ?? null,
-                // 🔹 Scryfall prices (strings -> numbers)
                 scry_usd: num(c.prices?.usd),
                 scry_usd_foil: num(c.prices?.usd_foil),
                 scry_usd_etched: num(c.prices?.usd_etched),
                 scry_prices_updated_at: new Date().toISOString(),
-                // set_icon_svg_uri filled after set metadata fetch
+                // set_icon_svg_uri is filled after set metadata fetch
                 synced_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
             })
@@ -77,10 +109,8 @@ export async function warmCachePrintsByOracle(oracleId) {
         next = page.has_more ? page.next_page : null
     }
 
-    // Fetch set icons once per set_code (with in-process cache)
+    // Fetch set icons once per set_code (memoized)
     const icons = await fetchSetIcons(Array.from(setCodes))
-
-    // Hydrate upserts with icon URIs
     for (const u of upserts) {
         u.set_icon_svg_uri = u.set_code ? (icons[u.set_code] ?? null) : null
     }
@@ -101,11 +131,13 @@ export async function warmCacheForQuery(q, maxOracles = 10) {
     const base = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(
         q
     )}&unique=prints&order=released&dir=desc&include_extras=false&include_variations=false`
+
     let url = base
     const oracleIds = new Set()
     const nameByOracle = new Map()
 
     while (url && oracleIds.size < maxOracles) {
+        scryfallHits.cardsSearch++
         const r = await fetch(url)
         if (!r.ok) {
             const text = await r.text().catch(() => '')
@@ -127,14 +159,11 @@ export async function warmCacheForQuery(q, maxOracles = 10) {
 
     console.log('[warmQ] found oracles:', oracleIds.size)
     for (const oid of oracleIds) {
-        await warmCachePrintsByOracle(oid)
-        // Pass along a known name so the first oracle row is not nameless
-        await refreshOracleMeta(oid, nameByOracle.get(oid) ?? null)
+        // 🔁 route through freshness gate (no-op if fresh)
+        await ensureFreshPrintsForOracle(oid, nameByOracle.get(oid) ?? null)
     }
     return Array.from(oracleIds)
 }
-
-// --- helpers ---
 
 // Fetch set metadata for a list of set codes and return a map { SET_CODE: icon_svg_uri }
 async function fetchSetIcons(codes) {
@@ -146,13 +175,13 @@ async function fetchSetIcons(codes) {
     for (const codeLower of unique) {
         const keyUpper = codeLower.toUpperCase()
 
-        // simple in-process memoization
         if (setIconCache.has(keyUpper)) {
             out[keyUpper] = setIconCache.get(keyUpper)
             continue
         }
 
         try {
+            scryfallHits.sets++
             const resp = await fetch(`https://api.scryfall.com/sets/${codeLower}`)
             if (!resp.ok) {
                 const text = await resp.text().catch(() => '')
@@ -175,13 +204,11 @@ async function fetchSetIcons(codes) {
 }
 
 async function refreshOracleMeta(oracleId, name = null) {
-    // 1) Count prints
     const { count } = await admin
         .from('cards')
         .select('scryfall_id', { count: 'exact', head: true })
         .eq('oracle_id', oracleId)
 
-    // 2) If name not provided, prefer existing oracles.name
     if (!name) {
         const { data: existing } = await admin
             .from('oracles')
@@ -191,7 +218,6 @@ async function refreshOracleMeta(oracleId, name = null) {
         if (existing?.name) name = existing.name
     }
 
-    // 3) Still no name? Derive from cards (warm has already inserted prints)
     if (!name) {
         const { data: fromCards } = await admin
             .from('cards')
@@ -203,7 +229,6 @@ async function refreshOracleMeta(oracleId, name = null) {
         if (fromCards?.name) name = fromCards.name
     }
 
-    // 4) Upsert — only include `name` if we have one (never overwrite with null)
     const payload = {
         oracle_id: oracleId,
         prints_count: count ?? 0,
@@ -215,11 +240,9 @@ async function refreshOracleMeta(oracleId, name = null) {
     if (error) throw error
 }
 
-// Refresh any oracle whose last sync is older than N hours (default 24)
+// Refresh stale oracles batch (unchanged, uses last_synced_at)
 export async function refreshStaleOracles({ staleHours = 24, limit = 1000 } = {}) {
     const cutoffIso = new Date(Date.now() - staleHours * 3600 * 1000).toISOString()
-
-    // pull stale (or never-synced) oracles
     const { data: stale, error } = await admin
         .from('oracles')
         .select('oracle_id, name, last_synced_at')

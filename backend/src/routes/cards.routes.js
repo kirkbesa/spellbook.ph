@@ -24,7 +24,7 @@ router.get(
         let prints = []
         let error = null
 
-        // 1) DB-first: use fast FTS on the indexed tsvector (fallback to ILIKE for very short queries)
+        // 1) DB-first (FTS for >=3 chars, ILIKE otherwise)
         if (q.length >= 3) {
             const r = await anon
                 .from('cards')
@@ -47,7 +47,7 @@ router.get(
 
         if (error) return res.status(400).json({ error: error.message })
 
-        // 2) If miss, warm cache by query -> fuzzy named fallback -> requery (FTS preferred)
+        // 2) If miss, warm cache by query -> fuzzy named fallback -> requery
         if (!prints || prints.length === 0) {
             const warmedOracles = await warmCacheForQuery(q, 10).catch((e) => {
                 console.error('[search] warmCacheForQuery error:', e)
@@ -55,7 +55,6 @@ router.get(
             })
 
             if (warmedOracles.length === 0) {
-                // named fuzzy fallback (helps “thassa”, typos, etc.)
                 try {
                     const named = await (
                         await fetch(
@@ -63,14 +62,13 @@ router.get(
                         )
                     ).json()
                     if (named?.oracle_id) {
-                        await warmCachePrintsByOracle(named.oracle_id)
+                        await ensureFreshPrintsForOracle(named.oracle_id, named.name ?? null)
                     }
                 } catch (e) {
                     console.error('[search] named fallback error:', e)
                 }
             }
 
-            // Requery after warming (FTS if possible)
             const r2 =
                 q.length >= 3
                     ? await anon
@@ -89,9 +87,22 @@ router.get(
             if (r2.error) return res.status(400).json({ error: r2.error.message })
             prints = r2.data ?? []
         } else {
-            // 3) Background freshness: update prints/prices for the oracles we already have
+            // 3) Background freshness only for *stale* oracles
             const oracles = Array.from(new Set(prints.map((p) => p.oracle_id).filter(Boolean)))
-            Promise.all(oracles.map((oid) => ensureFreshPrintsForOracle(oid))).catch(() => {})
+            if (oracles.length) {
+                const cutoffISO = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
+                const { data: stale } = await anon
+                    .from('oracles')
+                    .select('oracle_id,last_synced_at')
+                    .in('oracle_id', oracles)
+                    .or(`last_synced_at.is.null,last_synced_at.lt.${cutoffISO}`)
+                if (stale?.length) {
+                    const staleIds = stale.map((r) => r.oracle_id)
+                    Promise.all(staleIds.map((oid) => ensureFreshPrintsForOracle(oid))).catch(
+                        () => {}
+                    )
+                }
+            }
         }
 
         res.json({ query: q, prints })
