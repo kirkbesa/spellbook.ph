@@ -114,12 +114,14 @@ router.get(
     '/prints/:oracleId',
     asyncHandler(async (req, res) => {
         const { oracleId } = req.params
+        const limit = Math.min(Number(req.query.limit) || 300, 500) // safety cap
+
         const { data, error } = await anon
             .from('cards')
             .select(COLS)
             .eq('oracle_id', oracleId)
-            .order('synced_at', { ascending: false })
-            .limit(500)
+            .limit(limit)
+
         if (error) return res.status(400).json({ error: error.message })
         ensureFreshPrintsForOracle(oracleId).catch(() => {})
         res.json({ data })
