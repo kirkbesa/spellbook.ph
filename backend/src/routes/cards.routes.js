@@ -109,8 +109,29 @@ router.get(
     })
 )
 
+// Get All Prints
+router.get(
+    '/prints/:oracleId',
+    asyncHandler(async (req, res) => {
+        const { oracleId } = req.params
+        const { data, error } = await anon
+            .from('cards')
+            .select(COLS)
+            .eq('oracle_id', oracleId)
+            .order('synced_at', { ascending: false })
+            .limit(500)
+        if (error) return res.status(400).json({ error: error.message })
+        ensureFreshPrintsForOracle(oracleId).catch(() => {})
+        res.json({ data })
+    })
+)
+
 // Public read CRUD (unchanged)
-const crud = makeCrudRouter('cards', { orderBy: 'created_at', publicRead: true })
+const crud = makeCrudRouter('cards', {
+    orderBy: 'created_at',
+    publicRead: true,
+    idColumn: 'scryfall_id',
+})
 router.use('/', crud)
 
 export default router

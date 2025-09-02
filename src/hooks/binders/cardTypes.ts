@@ -26,6 +26,7 @@ export type BinderCard = {
     price_currency?: string | null
     card: {
         scryfall_id: string
+        oracle_id: string
         name: string
         set_code: string
         collector_number: string
