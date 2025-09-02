@@ -1,27 +1,25 @@
 // src/hooks/chat/useStartConversation.ts
 import { supabase } from '@/lib/supabase/supabaseClient'
 
+const API_BASE = import.meta.env.VITE_API_BASE ?? ''
+
+async function authHeaders() {
+    const { data } = await supabase.auth.getSession()
+    const token = data.session?.access_token
+    return {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    }
+}
+
 export async function startConversationByUsername(username: string) {
-    const { data: auth } = await supabase.auth.getUser()
-    const me = auth.user?.id
-    if (!me) throw new Error('Not authenticated')
-
-    // find target user by username (case-insensitive)
-    const { data: peer, error: e1 } = await supabase
-        .from('users')
-        .select('id, username')
-        .ilike('username', username)
-        .limit(1)
-        .maybeSingle()
-
-    if (e1) throw e1
-    if (!peer) throw new Error('User not found')
-    if (peer.id === me) throw new Error('Cannot chat with yourself')
-
-    const { data: convId, error: e2 } = await supabase.rpc('create_conversation_with', {
-        peer: peer.id,
+    const headers = await authHeaders()
+    const res = await fetch(`${API_BASE}/api/conversations/start-by-username`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ username }),
     })
-
-    if (e2) throw e2
-    return convId as string
+    const json = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(json?.error || res.statusText)
+    return json.id as string
 }

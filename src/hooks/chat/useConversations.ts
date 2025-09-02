@@ -1,5 +1,8 @@
+// src/hooks/chat/useConversation.ts
 import * as React from 'react'
 import { supabase } from '@/lib/supabase/supabaseClient'
+
+const API_BASE = import.meta.env.VITE_API_BASE ?? ''
 
 export type ConversationListItem = {
     id: string
@@ -9,52 +12,36 @@ export type ConversationListItem = {
     last_message_preview?: string | null
 }
 
+async function authHeaders() {
+    const { data } = await supabase.auth.getSession()
+    const token = data.session?.access_token
+    return {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    }
+}
+
 export function useConversations(myUserId: string | undefined) {
     const [convs, setConvs] = React.useState<ConversationListItem[]>([])
     const [loading, setLoading] = React.useState(true)
 
     const fetchConvs = React.useCallback(async () => {
         setLoading(true)
-        // get conversations + nested participants + preview (optional extra query)
-        const { data, error } = await supabase
-            .from('conversations')
-            .select(
-                `
-        id,
-        last_message_at,
-        last_message_id,
-        conversation_participants (
-          user_id,
-          users: user_id ( username, image_url )
-        )
-      `
-            )
-            .order('last_message_at', { ascending: false })
-        if (error) throw error
-
-        const items: ConversationListItem[] = (data ?? []).map((c) => ({
-            id: c.id,
-            last_message_at: c.last_message_at,
-            last_message_id: c.last_message_id,
-            participants: (c.conversation_participants ?? []).map((p) => {
-                const u = Array.isArray(p.users) ? p.users[0] : p.users
-                return {
-                    user_id: p.user_id,
-                    username: u?.username ?? null,
-                    image_url: u?.image_url ?? null,
-                }
-            }),
-        }))
-
-        setConvs(items)
-        setLoading(false)
+        try {
+            const headers = await authHeaders()
+            const res = await fetch(`${API_BASE}/api/conversations/mine`, { headers })
+            const json = await res.json()
+            if (!res.ok) throw new Error(json?.error || res.statusText)
+            setConvs(json?.data ?? [])
+        } finally {
+            setLoading(false)
+        }
     }, [])
 
     React.useEffect(() => {
         fetchConvs()
     }, [fetchConvs])
 
-    // Realtime: refresh list when conversations bump or new messages arrive
     React.useEffect(() => {
         const channel = supabase
             .channel('conv-list')
@@ -75,7 +62,6 @@ export function useConversations(myUserId: string | undefined) {
         }
     }, [fetchConvs])
 
-    // helpers
     const peerOf = React.useCallback(
         (c: ConversationListItem) => c.participants.find((p) => p.user_id !== myUserId),
         [myUserId]

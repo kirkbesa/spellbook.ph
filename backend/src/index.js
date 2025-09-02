@@ -28,6 +28,7 @@ import reviewsRouter from './routes/reviews.routes.js'
 import tcgPricesRouter from './routes/tcgPrices.routes.js'
 import { withSupabaseOptionalAuth } from './middleware/withSupabaseOptionalAuth.js'
 import pricingRoutes from './routes/pricing.routes.js'
+import chatRoutes from './routes/chat.routes.js'
 
 import { startDailyPriceJobs } from './jobs/dailyPriceRefresh.js'
 
@@ -49,6 +50,8 @@ app.get('/api/health', (req, res) => {
 })
 
 // ----- Other routes below here -------------------------
+app.use('/api', chatRoutes)
+
 app.use('/api/users', usersRouter)
 app.use('/api/cards', cardsRouter)
 app.use('/api/binders', bindersRouter)

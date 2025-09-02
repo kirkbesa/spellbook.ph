@@ -1,5 +1,8 @@
+// src/hooks/chat/useMessages.ts
 import * as React from 'react'
 import { supabase } from '@/lib/supabase/supabaseClient'
+
+const API_BASE = import.meta.env.VITE_API_BASE ?? ''
 
 export type ChatMessage = {
     id: number
@@ -9,6 +12,15 @@ export type ChatMessage = {
     created_at: string
 }
 
+async function authHeaders() {
+    const { data } = await supabase.auth.getSession()
+    const token = data.session?.access_token
+    return {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    }
+}
+
 export function useMessages(conversationId: string | null) {
     const [messages, setMessages] = React.useState<ChatMessage[]>([])
     const [loading, setLoading] = React.useState(false)
@@ -16,14 +28,17 @@ export function useMessages(conversationId: string | null) {
     const fetchMessages = React.useCallback(async () => {
         if (!conversationId) return
         setLoading(true)
-        const { data, error } = await supabase
-            .from('messages')
-            .select('id, conversation_id, sender_id, content, created_at')
-            .eq('conversation_id', conversationId)
-            .order('created_at', { ascending: true })
-        if (error) throw error
-        setMessages(data ?? [])
-        setLoading(false)
+        try {
+            const headers = await authHeaders()
+            const res = await fetch(`${API_BASE}/api/conversations/${conversationId}/messages`, {
+                headers,
+            })
+            const json = await res.json()
+            if (!res.ok) throw new Error(json?.error || res.statusText)
+            setMessages(json?.data ?? [])
+        } finally {
+            setLoading(false)
+        }
     }, [conversationId])
 
     React.useEffect(() => {
@@ -55,16 +70,15 @@ export function useMessages(conversationId: string | null) {
     const send = React.useCallback(
         async (content: string) => {
             if (!conversationId) return
-            const {
-                data: { user },
-            } = await supabase.auth.getUser()
-            if (!user) throw new Error('Not authenticated')
-            const { error } = await supabase.from('messages').insert({
-                conversation_id: conversationId,
-                sender_id: user.id,
-                content,
+            const headers = await authHeaders()
+            const res = await fetch(`/api/conversations/${conversationId}/messages`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ content }),
             })
-            if (error) throw error
+            const json = await res.json().catch(() => ({}))
+            if (!res.ok) throw new Error(json?.error || res.statusText)
+            // realtime will append on INSERT
         },
         [conversationId]
     )

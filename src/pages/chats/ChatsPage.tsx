@@ -21,6 +21,8 @@ import {
 } from '@/components/ui/sheet'
 import { Link } from '@tanstack/react-router'
 
+const API_BASE = import.meta.env.VITE_API_BASE ?? ''
+
 // ---------- helpers (time + grouping) ----------
 function formatTime(ts: string | number | Date) {
     const d = new Date(ts)
@@ -73,6 +75,15 @@ type MessageRow = {
 }
 
 const PAGE_SIZE = 30
+
+async function authHeaders() {
+    const { data } = await supabase.auth.getSession()
+    const token = data.session?.access_token
+    return {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    }
+}
 
 export default function ChatsPage() {
     const [me, setMe] = React.useState<string | null>(null)
@@ -129,33 +140,34 @@ export default function ChatsPage() {
     const listRef = React.useRef<HTMLDivElement | null>(null)
     const bottomRef = React.useRef<HTMLDivElement | null>(null)
 
+    // initial/latest window (API)
     const loadLatest = React.useCallback(async (convId: string) => {
         setLoadingInitial(true)
         ids.current.clear()
-        const { data, error } = await supabase
-            .from('messages')
-            .select('id, content, conversation_id, sender_id, created_at')
-            .eq('conversation_id', convId)
-            .order('id', { ascending: false })
-            .limit(PAGE_SIZE)
-
+        const headers = await authHeaders()
+        const res = await fetch(
+            `${API_BASE}/api/conversations/${convId}/messages?limit=${PAGE_SIZE}`,
+            {
+                headers,
+            }
+        )
+        const json = await res.json().catch(() => ({}))
         setLoadingInitial(false)
-        if (error) {
-            toast.error('Failed to load messages')
+        if (!res.ok) {
+            toast.error(json?.error || 'Failed to load messages')
             return
         }
-
-        const list = (data ?? []).reverse() as MessageRow[]
+        const newestFirst = (json.data ?? []) as MessageRow[]
+        const list = newestFirst.slice().reverse() // oldest->newest for UI
         list.forEach((m) => ids.current.add(m.id))
         setMessages(list)
-        setHasMore((data?.length ?? 0) === PAGE_SIZE)
-
-        // scroll to bottom after initial load
+        setHasMore(newestFirst.length === PAGE_SIZE)
         requestAnimationFrame(() =>
             bottomRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' })
         )
     }, [])
 
+    // load older page before the first message
     const loadOlder = React.useCallback(async () => {
         if (!active || loadingOlder || !hasMore) return
         const first = messages[0]
@@ -166,30 +178,30 @@ export default function ChatsPage() {
         const prevTop = container?.scrollTop ?? 0
 
         setLoadingOlder(true)
-        const { data, error } = await supabase
-            .from('messages')
-            .select('id, content, conversation_id, sender_id, created_at')
-            .eq('conversation_id', active)
-            .lt('id', first.id)
-            .order('id', { ascending: false })
-            .limit(PAGE_SIZE)
-
+        const headers = await authHeaders()
+        const res = await fetch(
+            `${API_BASE}/api/conversations/${active}/messages?limit=${PAGE_SIZE}&beforeId=${first.id}`,
+            { headers }
+        )
+        const json = await res.json().catch(() => ({}))
         setLoadingOlder(false)
-        if (error) return
+        if (!res.ok) return
 
-        const older = (data ?? []).reverse() as MessageRow[]
+        const olderNewestFirst = (json.data ?? []) as MessageRow[]
+        const older = olderNewestFirst.slice().reverse() // oldest->newest
         const filtered = older.filter((m) => !ids.current.has(m.id))
         filtered.forEach((m) => ids.current.add(m.id))
+
         if (filtered.length) {
             setMessages((cur) => [...filtered, ...cur])
-            setHasMore((data?.length ?? 0) === PAGE_SIZE)
+            setHasMore(olderNewestFirst.length === PAGE_SIZE)
             requestAnimationFrame(() => {
                 const nowHeight = container?.scrollHeight ?? 0
                 const delta = nowHeight - prevHeight
                 if (container) container.scrollTop = prevTop + delta
             })
         } else {
-            setHasMore((data?.length ?? 0) === PAGE_SIZE)
+            setHasMore(olderNewestFirst.length === PAGE_SIZE)
         }
     }, [active, hasMore, loadingOlder, messages])
 
@@ -248,21 +260,20 @@ export default function ChatsPage() {
 
     // mark read whenever viewing messages
     React.useEffect(() => {
-        if (!me || !active || messages.length === 0) return
+        if (!active || messages.length === 0) return
         const latest = messages[messages.length - 1]?.id
         markConversationRead({
             conversationId: active,
-            myUserId: me,
             latestMessageId: latest,
         }).catch(() => {})
-    }, [me, active, messages.length])
+    }, [active, messages.length])
 
     const startWithUser = async (uname: string) => {
         try {
             const convId = await startConversationByUsername(uname)
             setActive(convId)
             await refreshConvs()
-            setDrawerOpen(false) // if started via mobile bar, ensure drawer is closed
+            setDrawerOpen(false)
         } catch (e) {
             const msg = e instanceof Error ? e.message : 'Failed to start conversation'
             toast.error(msg)
@@ -304,16 +315,20 @@ export default function ChatsPage() {
         }
     }, [loadOlder, loadingOlder, hasMore])
 
-    // send message (INCLUDES sender_id to satisfy RLS)
+    // send message via API (realtime will append)
     const send = React.useCallback(
         async (text: string) => {
-            if (!active || !me) return
-            const { error } = await supabase
-                .from('messages')
-                .insert({ conversation_id: active, content: text, sender_id: me })
-            if (error) throw new Error(error.message)
+            if (!active) return
+            const headers = await authHeaders()
+            const res = await fetch(`${API_BASE}/api/conversations/${active}/messages`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ content: text }),
+            })
+            const j = await res.json().catch(() => ({}))
+            if (!res.ok) throw new Error(j?.error || res.statusText)
         },
-        [active, me]
+        [active]
     )
 
     // ----- UI -----
@@ -459,27 +474,36 @@ export default function ChatsPage() {
 
             {/* Chat panel */}
             <section className='col-span-12 md:col-span-9 rounded-lg border flex flex-1 min-h-0 flex-col'>
-                <Link to={`/u/$userId`} params={{ userId: activePeer?.user_id as string }}>
-                    <div className='flex items-center px-2 border-b'>
-                        <div className='relative h-10 w-10 overflow-hidden rounded-full border bg-muted'>
-                            {activePeer?.image_url && (
-                                <img
-                                    src={activePeer?.image_url}
-                                    alt='Owner avatar'
-                                    className='h-full w-full object-cover'
-                                    draggable={false}
-                                />
-                            )}
+                {activePeer?.user_id ? (
+                    <Link to={`/u/$userId`} params={{ userId: activePeer.user_id }}>
+                        <div className='flex items-center px-2 border-b'>
+                            <div className='relative h-10 w-10 overflow-hidden rounded-full border bg-muted'>
+                                {activePeer?.image_url && (
+                                    <img
+                                        src={activePeer?.image_url}
+                                        alt='Owner avatar'
+                                        className='h-full w-full object-cover'
+                                        draggable={false}
+                                    />
+                                )}
+                            </div>
+                            <div className='p-3 flex flex-col'>
+                                <span className='text-sm font-medium'>
+                                    {activePeer ? `@${activePeer.username}` : 'Conversation'}
+                                </span>
+                                <span className='text-muted-foreground text-xs'>View Profile</span>
+                            </div>
                         </div>
+                    </Link>
+                ) : (
+                    <div className='flex items-center px-2 border-b'>
+                        <div className='relative h-10 w-10 overflow-hidden rounded-full border bg-muted' />
                         <div className='p-3 flex flex-col'>
-                            <span className='text-sm font-medium'>
-                                {activePeer ? `@${activePeer.username}` : 'Conversation'}
-                            </span>
-
-                            <span className='text-muted-foreground text-xs'>View Profile</span>
+                            <span className='text-sm font-medium'>Conversation</span>
+                            <span className='text-muted-foreground text-xs'>&nbsp;</span>
                         </div>
                     </div>
-                </Link>
+                )}
 
                 {/* Scrollable list with lazy load on top */}
                 <div
@@ -546,7 +570,7 @@ export default function ChatsPage() {
                     onSend={async (text) => {
                         if (!text.trim()) return
                         try {
-                            await send(text) // includes sender_id
+                            await send(text)
                         } catch (e) {
                             const msg = e instanceof Error ? e.message : 'Failed to send'
                             toast.error(msg)

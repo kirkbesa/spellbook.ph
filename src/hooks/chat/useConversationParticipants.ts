@@ -2,12 +2,23 @@
 import * as React from 'react'
 import { supabase } from '@/lib/supabase/supabaseClient'
 
+const API_BASE = import.meta.env.VITE_API_BASE ?? ''
+
 export type ConvParticipant = {
     conversation_id: string
     user_id: string
     last_read_message_id: number | null
     last_read_at: string | null
     users: { username: string | null; image_url: string | null } | null
+}
+
+async function authHeaders() {
+    const { data } = await supabase.auth.getSession()
+    const token = data.session?.access_token
+    return {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    }
 }
 
 export function useConversationParticipants(conversationId?: string | null) {
@@ -20,28 +31,20 @@ export function useConversationParticipants(conversationId?: string | null) {
             return
         }
         setLoading(true)
-        const { data, error } = await supabase
-            .from('conversation_participants')
-            .select(
-                `
-        conversation_id,
-        user_id,
-        last_read_message_id,
-        last_read_at,
-        users:users!conversation_participants_user_id_fkey(
-          username, image_url
-        )
-      `
+        try {
+            const headers = await authHeaders()
+            const res = await fetch(
+                `${API_BASE}/api/conversations/${conversationId}/participants`,
+                {
+                    headers,
+                }
             )
-            .eq('conversation_id', conversationId)
-            .returns<ConvParticipant[]>()
-
-        setLoading(false)
-        if (error) {
-            // optional: console.error('[useConversationParticipants]', error)
-            return
+            const json = await res.json()
+            if (!res.ok) throw new Error(json?.error || res.statusText)
+            setParts(json?.data ?? [])
+        } finally {
+            setLoading(false)
         }
-        setParts(data ?? [])
     }, [conversationId])
 
     React.useEffect(() => {

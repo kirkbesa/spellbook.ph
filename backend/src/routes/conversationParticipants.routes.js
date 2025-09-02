@@ -1,3 +1,4 @@
+// backend/src/routes/conversationParticipants.routes.js
 import express from 'express'
 import asyncHandler from '../middleware/asyncHandler.js'
 import { requireAuth } from '../middleware/auth.js'
