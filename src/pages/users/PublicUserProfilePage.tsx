@@ -121,7 +121,7 @@ export default function PublicUserProfilePage({
             <section className='space-y-3'>
                 <h2 className='text-lg font-semibold'>Public Binders</h2>
 
-                <div className='rounded-lg border p-3'>
+                <div className='rounded-lg'>
                     {binders.length === 0 ? (
                         <div className='text-sm text-muted-foreground'>No public binders.</div>
                     ) : (
