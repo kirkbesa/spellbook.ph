@@ -272,12 +272,12 @@ export default function BinderCardsGrid({
                                 </div>
 
                                 <div className='mt-2 flex items-center justify-between text-md'>
-                                    <span className='inline-flex items-center gap-1'>
+                                    <span className='inline-flex items-center gap-1 font-semibold'>
                                         <Layers className='h-3.5 w-3.5' />
                                         {it.quantity}x
                                         {it.reserved_quantity ? (
-                                            <span className='text-[10px] text-amber-700'>
-                                                ({it.reserved_quantity} reserved)
+                                            <span className='text-sm text-amber-700'>
+                                                ({it.reserved_quantity}x reserved)
                                             </span>
                                         ) : null}
                                     </span>
