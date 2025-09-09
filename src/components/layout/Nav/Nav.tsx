@@ -10,6 +10,7 @@ import {
     Menu,
     FolderClosed,
     Bell,
+    BookOpenText,
 } from 'lucide-react'
 
 import {
@@ -40,9 +41,10 @@ type NavItem = {
 
 const authedItems: NavItem[] = [
     { to: '/', label: 'Home', icon: Home, exact: true },
+    { to: '/browse', label: 'Browse Cards', icon: BookOpenText },
     { to: '/binders', label: 'My Binders', icon: FolderClosed },
     { to: '/chats', label: 'Chats', icon: MessageSquare },
-    { to: '/notifications', label: 'Notifications', icon: Bell },
+    { to: '/offers', label: 'Offers & Orders', icon: Bell },
     { to: '/profile', label: 'Profile', icon: User },
 ]
 
