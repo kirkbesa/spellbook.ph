@@ -4,7 +4,7 @@ import asyncHandler from '../middleware/asyncHandler.js'
 import { requireAuth } from '../middleware/auth.js'
 import { makeCrudRouter } from './_factory.js'
 import { userClientFromToken, anon } from '../lib/supabase/supabaseAdminClient.js'
-import { ensureFreshPrintsForOracle } from '../services/cardsCache.js'
+import { ensureFreshPrintsForOracle, warmCacheForQuery } from '../services/cardsCache.js'
 
 const router = express.Router()
 
@@ -236,6 +236,116 @@ router.post(
 
         if (chosenOracleId) ensureFreshPrintsForOracle(chosenOracleId).catch(() => {})
         res.json({ data, merged: false })
+    })
+)
+
+// POST /api/binders/:id/bulk-add
+router.post(
+    '/:id/bulk-add',
+    requireAuth,
+    asyncHandler(async (req, res) => {
+        const binderId = req.params.id
+        const uid = req.user.id
+        const rawCards = req.body.cards
+
+        if (!Array.isArray(rawCards) || !rawCards.length) {
+            return res.status(400).json({ error: 'Invalid payload' })
+        }
+
+        // Check ownership
+        const { data: binder, error: bErr } = await req.supabase
+            .from('binders')
+            .select('id, owner_id')
+            .eq('id', binderId)
+            .single()
+        if (bErr) return res.status(400).json({ error: bErr.message })
+        if (!binder || binder.owner_id !== uid) return res.status(403).json({ error: 'Not owner' })
+
+        const success = []
+        const notFound = []
+
+        for (const c of rawCards) {
+            const name = c.name.trim()
+            const qty = Number(c.qty ?? 1)
+            console.log(`Searching for: ${qty} ${name}`)
+
+            if (qty <= 0) continue
+
+            // Try local DB first
+            const { data: dbCards, error: cardErr } = await req.supabase
+                .from('cards')
+                .select('*')
+                .ilike('name', name)
+                .limit(1)
+
+            let card = dbCards?.[0]
+
+            // If not found, fetch from Scryfall
+            if (!card) {
+                try {
+                    // Use named fuzzy search to get oracle_id
+                    const namedResp = await fetch(
+                        `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`
+                    )
+                    const namedJson = await namedResp.json()
+                    if (namedJson?.oracle_id) {
+                        await ensureFreshPrintsForOracle(
+                            namedJson.oracle_id,
+                            namedJson.name ?? null
+                        )
+                        // Re-query DB for cached card
+                        const { data: cached } = await req.supabase
+                            .from('cards')
+                            .select('id, name, oracle_id, scryfall_id')
+                            .eq('oracle_id', namedJson.oracle_id)
+                            .limit(1)
+                        card = cached?.[0]
+                    }
+                } catch (err) {
+                    console.error('[bulk-add] Scryfall fetch failed for', name, err)
+                }
+            }
+
+            if (!card) {
+                notFound.push(name)
+                continue
+            }
+
+            // Check if identical listing exists
+            const { data: existing } = await req.supabase
+                .from('binder_cards')
+                .select('id, quantity')
+                .eq('binder_id', binderId)
+                .eq('card_id', card.scryfall_id)
+                .eq('condition', 'NM')
+                .eq('finish', 'non_foil')
+                .eq('language', 'EN')
+                .limit(1)
+                .maybeSingle()
+
+            if (existing) {
+                await req.supabase
+                    .from('binder_cards')
+                    .update({ quantity: (existing.quantity ?? 0) + qty })
+                    .eq('id', existing.id)
+            } else {
+                await req.supabase.from('binder_cards').insert({
+                    binder_id: binderId,
+                    card_id: card.scryfall_id,
+                    quantity: qty,
+                    condition: 'NM',
+                    finish: 'non_foil',
+                    language: 'EN',
+                    price_mode: 'scryfall',
+                    fx_multiplier: 50,
+                    listing_status: 'available',
+                })
+            }
+
+            success.push({ name: c.name, qty })
+        }
+
+        res.json({ success, notFound })
     })
 )
 

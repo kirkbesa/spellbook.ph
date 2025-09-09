@@ -16,7 +16,8 @@ import { useCardSearch } from '@/hooks/cards/useCardSearch'
 import { useAddBinderCard } from '@/hooks/binders/useAddBinderCard'
 import type { SearchResult, CardCondition, CardFinish, PriceMode } from './types'
 import CardSearch from './CardSearch'
-import { ChevronUp, ChevronDown, X } from 'lucide-react'
+import { ChevronUp, ChevronDown, X, TextSearch } from 'lucide-react'
+import BulkAddModal from './BulkAddModal'
 
 type Props = { binderId: string; onAdded?: () => void }
 
@@ -111,9 +112,27 @@ export default function AddCardPanel({ binderId, onAdded }: Props) {
         }
     }
 
+    // Bulk Add Modal
+    const [showBulkModal, setShowBulkModal] = React.useState(false)
+
     return (
         <div className='rounded-lg border p-3'>
-            <h2 className='mb-2 text-sm font-medium'>Add Cards</h2>
+            <div className='w-full flex justify-between items-center pb-3 px-1'>
+                <h2 className='mb-2 text-sm font-medium'>Add Cards</h2>
+                <Button variant={'ghost'} onClick={() => setShowBulkModal(true)}>
+                    <TextSearch />
+                    Bulk Add
+                </Button>
+            </div>
+
+            {showBulkModal && (
+                <BulkAddModal
+                    binderId={binderId}
+                    open={showBulkModal}
+                    onOpenChange={setShowBulkModal}
+                    onAdded={onAdded}
+                />
+            )}
 
             <CardSearch
                 value={q}
