@@ -16,6 +16,7 @@ import { toast } from 'sonner'
 import CardSearch from '@/pages/binders/components/CardSearch'
 import { useCardSearch, type SearchResult } from '@/hooks/cards/useCardSearch'
 import { X } from 'lucide-react'
+import { useMyBinders } from '@/hooks/binders/useMyBinders'
 
 type Props = { onSuccess: (binder: Binder) => void }
 
@@ -35,6 +36,7 @@ async function getArtCropUrl(scryfallId: string): Promise<string | null> {
 
 export default function CreateBinderForm({ onSuccess }: Props) {
     const { createBinder, loading, error } = useCreateBinder()
+    const { binders } = useMyBinders()
 
     const [name, setName] = useState('')
     // const [pocket, setPocket] = useState<4 | 9 | 16>(9)
@@ -59,6 +61,11 @@ export default function CreateBinderForm({ onSuccess }: Props) {
 
     async function onSubmit(e: React.FormEvent) {
         e.preventDefault()
+
+        if (binders.length >= 6) {
+            toast.warning('You have exceeded the max amount of binders (6).')
+            return
+        }
         if (!canSubmit) return
 
         const payload: CreateBinderInput = {
