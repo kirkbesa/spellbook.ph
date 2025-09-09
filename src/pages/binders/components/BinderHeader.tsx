@@ -8,6 +8,7 @@ import { Link, useNavigate } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { startConversationByUsername } from '@/hooks/chat/useStartConversation'
+import { isUserLoggedIn } from '@/lib/isUserLoggedIn'
 
 type Props = {
     binder: Binder
@@ -29,6 +30,15 @@ export default function BinderHeader({ binder, isOwner }: Props) {
 
     const onMessage = React.useCallback(async () => {
         try {
+            // Auth Check
+            const loggedIn = await isUserLoggedIn()
+            if (!loggedIn) {
+                toast.warning('You must be logged in to start a chat.')
+                navigate({ to: '/login' })
+                return
+            }
+
+            // Start Conversation
             setStarting(true)
             if (owner?.username) {
                 // Start or fetch the conversation by username
