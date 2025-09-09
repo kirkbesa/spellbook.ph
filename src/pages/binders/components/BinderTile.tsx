@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Layers, Cog } from 'lucide-react'
+import DeleteBinderButton from './DeleteBinderButton'
 
 type BinderLike = {
     id: string
@@ -70,6 +71,11 @@ export default function BinderTile({ binder }: Props) {
                                 <span>Settings</span>
                             </button>
                         </Link>
+                        <DeleteBinderButton
+                            key={binder.id}
+                            binderId={binder.id}
+                            onDeleted={() => window.location.reload()}
+                        />
                     </div>
                 </div>
             </Card>
