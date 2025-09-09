@@ -61,7 +61,7 @@ export default function PublicUserProfilePage({
     }
 
     return (
-        <div className='mx-auto w-full max-w-5xl space-y-6'>
+        <div className='mx-auto w-full max-w-6xl space-y-6'>
             {/* Header */}
             <section className='rounded-lg border p-4'>
                 <div className='flex gap-4 sm:flex-row items-center'>

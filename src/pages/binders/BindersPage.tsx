@@ -13,7 +13,7 @@ export default function BindersPage() {
     if (loading) return <SpinnerCentered label='Loading your binders…' size='lg' />
 
     return (
-        <div className='mx-auto max-w-5xl space-y-4'>
+        <div className='mx-auto max-w-6xl space-y-4'>
             <h1 className='text-2xl font-bold'>My Binders</h1>
             {error && <p className='text-sm text-red-500'>{error}</p>}
 

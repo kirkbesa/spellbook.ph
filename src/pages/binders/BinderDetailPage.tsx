@@ -21,7 +21,7 @@ export default function BinderDetailPage({ binder, currentUserId }: Props) {
     const { cards, loading, error, refresh } = useBinderCards(binder.id)
 
     return (
-        <div className='mx-auto w-full max-w-5xl space-y-6 pb-6'>
+        <div className='mx-auto w-full max-w-6xl space-y-6 pb-6'>
             <div className='flex items-center justify-between'>
                 <BackButton fallbackTo='/binders' />
                 <div className='flex items-center gap-2'>

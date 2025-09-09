@@ -61,7 +61,7 @@ export default function CardSearch({
     }
 
     return (
-        <div ref={wrapRef} className='relative'>
+        <div ref={wrapRef} className='relative z-10'>
             <input
                 value={value}
                 onChange={(e) => onChange(e.target.value)}

@@ -74,7 +74,8 @@ export default function BulkAddModal({ binderId, open, onOpenChange, onAdded }: 
                     rows={10}
                     value={list}
                     onChange={(e) => setList(e.target.value)}
-                    placeholder={`Paste your list here...\nExamples:\n4 Sacred Cat\n4x Squadron Hawk\nOutlaw Medic`}
+                    placeholder={`Paste your list here...\nExamples:\n4x Sacred Cat\n4 Squadron Hawk\nOutlaw Medic`}
+                    className='text-sm sm:text-md'
                 />
                 <div className='flex justify-end gap-2 pt-4'>
                     <Button variant='ghost' onClick={() => onOpenChange(false)}>

@@ -196,6 +196,54 @@ export type Database = {
         }
         Relationships: []
       }
+      cards_ingest_stage: {
+        Row: {
+          collector_number: string
+          image_normal: string | null
+          image_small: string | null
+          lang: string | null
+          name: string
+          oracle_id: string | null
+          scry_usd: number | null
+          scry_usd_etched: number | null
+          scry_usd_foil: number | null
+          scryfall_id: string
+          set_code: string
+          set_icon_svg_uri: string | null
+          tcgplayer_product_id: number | null
+        }
+        Insert: {
+          collector_number: string
+          image_normal?: string | null
+          image_small?: string | null
+          lang?: string | null
+          name: string
+          oracle_id?: string | null
+          scry_usd?: number | null
+          scry_usd_etched?: number | null
+          scry_usd_foil?: number | null
+          scryfall_id: string
+          set_code: string
+          set_icon_svg_uri?: string | null
+          tcgplayer_product_id?: number | null
+        }
+        Update: {
+          collector_number?: string
+          image_normal?: string | null
+          image_small?: string | null
+          lang?: string | null
+          name?: string
+          oracle_id?: string | null
+          scry_usd?: number | null
+          scry_usd_etched?: number | null
+          scry_usd_foil?: number | null
+          scryfall_id?: string
+          set_code?: string
+          set_icon_svg_uri?: string | null
+          tcgplayer_product_id?: number | null
+        }
+        Relationships: []
+      }
       cart_items: {
         Row: {
           binder_card_id: string
@@ -289,14 +337,20 @@ export type Database = {
       conversation_participants: {
         Row: {
           conversation_id: string
+          last_read_at: string | null
+          last_read_message_id: number | null
           user_id: string
         }
         Insert: {
           conversation_id: string
+          last_read_at?: string | null
+          last_read_message_id?: number | null
           user_id: string
         }
         Update: {
           conversation_id?: string
+          last_read_at?: string | null
+          last_read_message_id?: number | null
           user_id?: string
         }
         Relationships: [
@@ -320,6 +374,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_dm: boolean
           last_message_at: string | null
           last_message_id: number | null
           status: string | null
@@ -328,6 +383,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          is_dm?: boolean
           last_message_at?: string | null
           last_message_id?: number | null
           status?: string | null
@@ -336,6 +392,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          is_dm?: boolean
           last_message_at?: string | null
           last_message_id?: number | null
           status?: string | null
@@ -821,6 +878,48 @@ export type Database = {
           },
         ]
       }
+      scryfall_sets: {
+        Row: {
+          code: string
+          created_at: string
+          icon_svg_uri: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          icon_svg_uri?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          icon_svg_uri?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      scryfall_sets_stage: {
+        Row: {
+          code: string | null
+          icon_svg_uri: string | null
+          name: string | null
+        }
+        Insert: {
+          code?: string | null
+          icon_svg_uri?: string | null
+          name?: string | null
+        }
+        Update: {
+          code?: string | null
+          icon_svg_uri?: string | null
+          name?: string | null
+        }
+        Relationships: []
+      }
       tcg_prices: {
         Row: {
           captured_at: string
@@ -917,9 +1016,49 @@ export type Database = {
         Args: { b_id: string }
         Returns: boolean
       }
+      create_conversation_with: {
+        Args: { peer: string }
+        Returns: string
+      }
+      gtrgm_compress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gtrgm_decompress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gtrgm_in: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gtrgm_options: {
+        Args: { "": unknown }
+        Returns: undefined
+      }
+      gtrgm_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
       is_conversation_participant: {
         Args: { c_id: string }
         Returns: boolean
+      }
+      set_limit: {
+        Args: { "": number }
+        Returns: number
+      }
+      show_limit: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      show_trgm: {
+        Args: { "": string }
+        Returns: string[]
+      }
+      start_conversation: {
+        Args: { target_username: string }
+        Returns: string
       }
       username_available: {
         Args: { u: string }

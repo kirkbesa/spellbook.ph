@@ -116,7 +116,7 @@ export default function BinderCardsGrid({
 
     if (items.length === 0) {
         return (
-            <div className='flex items-center justify-center rounded-md border p-10 text-sm text-muted-foreground'>
+            <div className='flex items-center justify-center rounded-md p-10 text-sm text-muted-foreground'>
                 No cards yet.
             </div>
         )
