@@ -119,7 +119,11 @@ export default function AddCardPanel({ binderId, onAdded }: Props) {
         <div className='rounded-lg border p-3'>
             <div className='w-full flex justify-between items-center pb-3 px-1'>
                 <h2 className='mb-2 text-sm font-medium'>Add Cards</h2>
-                <Button variant={'ghost'} onClick={() => setShowBulkModal(true)}>
+                <Button
+                    variant={'ghost'}
+                    onClick={() => setShowBulkModal(true)}
+                    title='Add cards in bulk'
+                >
                     <TextSearch />
                     Bulk Add
                 </Button>

@@ -7,6 +7,7 @@ import { Layers, ImageOff, Pencil, ChevronLeft, ChevronRight, X } from 'lucide-r
 import { useRemoveBinderCard } from '@/hooks/binders/useRemoveBinderCard'
 import { toast } from 'sonner'
 import EditBinderCardModal from './EditBinderCardModal'
+import RemoveBinderCardModal from './RemoveBinderCardModal'
 
 type Props = {
     items: BinderCard[]
@@ -101,8 +102,9 @@ export default function BinderCardsGrid({
     const [pageIndex, setPageIndex] = React.useState(0)
     const totalPages = Math.max(1, Math.ceil(items.length / pageSize))
 
-    // NEW: edit modal state
+    // Edit & Remove modal state
     const [editItem, setEditItem] = React.useState<BinderCard | null>(null)
+    const [removeItem, setRemoveItem] = React.useState<BinderCard | null>(null)
 
     React.useEffect(() => {
         if (pageIndex > totalPages - 1) setPageIndex(totalPages - 1)
@@ -192,19 +194,12 @@ export default function BinderCardsGrid({
                         }
                     }
 
-                    const handleRemove = async () => {
-                        if ((it.reserved_quantity ?? 0) > 0) {
+                    const handleRemoveClick = async (item: BinderCard) => {
+                        if ((item.reserved_quantity ?? 0) > 0) {
                             toast.error('Cannot remove: reserved copies exist.')
                             return
                         }
-                        if (!window.confirm('Remove this listing from your binder?')) return
-                        try {
-                            await remove(it.id)
-                            toast.success('Removed')
-                            refresh()
-                        } catch (e) {
-                            toast.error(e instanceof Error ? e?.message : 'Failed to remove')
-                        }
+                        setRemoveItem(item)
                     }
 
                     return (
@@ -213,8 +208,8 @@ export default function BinderCardsGrid({
                                 <CardImage
                                     src={img}
                                     alt={name}
-                                    onRemoveClick={handleRemove}
-                                    onEditClick={() => setEditItem(it)} // NEW
+                                    onRemoveClick={() => handleRemoveClick(it)}
+                                    onEditClick={() => setEditItem(it)}
                                     removing={removingId === it.id}
                                     isOwner={isOwner}
                                 />
@@ -360,6 +355,15 @@ export default function BinderCardsGrid({
                 item={editItem}
                 onClose={() => setEditItem(null)}
                 onSaved={refresh}
+            />
+
+            {/* REMOVE MODAL */}
+            <RemoveBinderCardModal
+                open={!!removeItem}
+                item={removeItem}
+                onClose={() => setRemoveItem(null)}
+                removeFn={remove}
+                onRemoved={refresh}
             />
         </div>
     )
