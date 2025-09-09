@@ -17,6 +17,7 @@ import CardSearch from '@/pages/binders/components/CardSearch'
 import { useCardSearch, type SearchResult } from '@/hooks/cards/useCardSearch'
 import { X } from 'lucide-react'
 import { useMyBinders } from '@/hooks/binders/useMyBinders'
+import { MAX_BINDERS } from '@/pages/profile/constants'
 
 type Props = { onSuccess: (binder: Binder) => void }
 
@@ -62,7 +63,7 @@ export default function CreateBinderForm({ onSuccess }: Props) {
     async function onSubmit(e: React.FormEvent) {
         e.preventDefault()
 
-        if (binders.length >= 6) {
+        if (binders.length >= MAX_BINDERS) {
             toast.warning('You have exceeded the max amount of binders (6).')
             return
         }

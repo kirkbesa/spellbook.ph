@@ -5,6 +5,7 @@ import { FolderClosed, Plus } from 'lucide-react'
 import { useMyBinders } from '@/hooks/binders/useMyBinders'
 import { SpinnerCentered } from '@/components/common/Spinner'
 import BinderTile from './components/BinderTile'
+import { MAX_BINDERS } from '../profile/constants'
 
 export default function BindersPage() {
     const { binders, loading, error } = useMyBinders()
@@ -41,7 +42,7 @@ export default function BindersPage() {
 function CreateTile({ binderQuantity }: { binderQuantity: number }) {
     return (
         <>
-            {binderQuantity >= 6 ? (
+            {binderQuantity >= MAX_BINDERS ? (
                 <Card className='flex h-full flex-col items-center justify-center gap-2 p-6 text-center transition-transform hover:scale-[1.02]'>
                     <div className='text-sm text-muted-foreground'>Binder Capacity Maxed Out</div>
                 </Card>
