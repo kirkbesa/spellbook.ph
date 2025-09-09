@@ -64,7 +64,7 @@ export default function PublicUserProfilePage({
         <div className='mx-auto w-full max-w-5xl space-y-6'>
             {/* Header */}
             <section className='rounded-lg border p-4'>
-                <div className='flex flex-col gap-4 sm:flex-row sm:items-center'>
+                <div className='flex gap-4 sm:flex-row items-center'>
                     <div className='h-16 w-16 overflow-hidden rounded-full border bg-muted shrink-0'>
                         {profile.image_url && (
                             <img
@@ -81,11 +81,14 @@ export default function PublicUserProfilePage({
                     <div className='min-w-0 flex-1'>
                         <div className='flex items-center gap-2'>
                             <h1 className='truncate text-xl font-semibold'>{fullName}</h1>
-                            {isVerified && (
-                                <Badge className='gap-1 bg-blue-500 text-white dark:bg-blue-600'>
-                                    <BadgeCheck size={14} />
-                                    Verified
-                                </Badge>
+                            {!isVerified && (
+                                <>
+                                    <Badge className='hidden sm:flex gap-1 bg-blue-500 text-white dark:bg-blue-600'>
+                                        <BadgeCheck size={14} />
+                                        <span className=''>Verified</span>
+                                    </Badge>
+                                    <BadgeCheck className='w-5 h-5 text-blue-500 sm:hidden' />
+                                </>
                             )}
                         </div>
                         {profile.username && (
@@ -101,9 +104,13 @@ export default function PublicUserProfilePage({
 
                     {!isMe && (
                         <div className='sm:ml-auto'>
-                            <Button onClick={onMessage} className='inline-flex items-center gap-2'>
+                            <Button
+                                onClick={onMessage}
+                                variant={'secondary'}
+                                className='inline-flex items-center gap-2'
+                            >
                                 <MessageSquare size={16} />
-                                Message
+                                <span className='hidden sm:flex'>Message</span>
                             </Button>
                         </div>
                     )}
