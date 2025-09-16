@@ -2,30 +2,24 @@
 import { Link } from '@tanstack/react-router'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { BadgeCheckIcon, Layers, MapPin, Target } from 'lucide-react'
-import { type BinderResult } from '../BrowsePage'
+import { BadgeCheckIcon, Layers, MapPin } from 'lucide-react'
+import type { Binder } from './LatestBinders'
 
 type Props = {
-    binder: BinderResult
-    showMatchInfo?: boolean
+    binder: Binder
 }
 
-export default function BinderSearchTile({ binder, showMatchInfo = true }: Props) {
+export default function LatestBinderTile({ binder }: Props) {
     const cover = binder.image_url || ''
 
-    let ownerName = binder.owner.username
-    if (binder.owner.first_name) {
-        if (binder.owner.last_name) {
-            ownerName = binder.owner.first_name + ' ' + binder.owner.last_name
+    let ownerName = binder.users.username ?? ''
+    if (binder.users.first_name) {
+        if (binder.users.last_name) {
+            ownerName = binder.users.first_name + ' ' + binder.users.last_name
         } else {
-            ownerName = binder.owner.first_name
+            ownerName = binder.users.first_name
         }
     }
-
-    const matchPercentage =
-        binder.totalCardsSearched > 0
-            ? Math.round((binder.totalCardsMatched / binder.totalCardsSearched) * 100)
-            : 0
 
     return (
         <Link
@@ -65,13 +59,9 @@ export default function BinderSearchTile({ binder, showMatchInfo = true }: Props
                         </Badge>
 
                         {/* Match information - only show if search results */}
-                        {showMatchInfo && binder.totalCardsSearched > 0 && (
+                        {binder.binder_cards.length > 0 && (
                             <div className='flex items-center gap-2 text-sm font-medium text-green-600'>
-                                <Target size={14} />
-                                <span>
-                                    {binder.totalCardsMatched}/{binder.totalCardsSearched} matches (
-                                    {matchPercentage}%)
-                                </span>
+                                <span>{binder.binder_cards.length} new cards!</span>
                             </div>
                         )}
                     </div>
@@ -79,21 +69,21 @@ export default function BinderSearchTile({ binder, showMatchInfo = true }: Props
                     <div className='flex items-center gap-2 text-xs text-muted-foreground mb-4'>
                         <Layers size={14} />
                         <span className='truncate'>
-                            {binder.cardCount ?? 0}{' '}
-                            {(binder.cardCount ?? 0) === 1 ? 'card' : 'cards'} total
+                            {binder.card_count ?? 0}{' '}
+                            {(binder.card_count ?? 0) === 1 ? 'card' : 'cards'}
                         </span>
                     </div>
 
                     {/* Owner information */}
                     <div className='flex flex-row items-center gap-4 mt-auto'>
-                        {binder.owner ? (
-                            <Link to='/u/$userId' params={{ userId: binder.owner.id }}>
+                        {binder.users ? (
+                            <Link to='/u/$userId' params={{ userId: binder.users.id }}>
                                 <div className='flex items-center gap-3'>
                                     {/* Avatar */}
                                     <div className='relative h-8 w-8 overflow-hidden rounded-full border bg-muted'>
-                                        {binder.owner.image_url && (
+                                        {binder.users.image_url && (
                                             <img
-                                                src={binder.owner.image_url}
+                                                src={binder.users.image_url}
                                                 alt='Owner avatar'
                                                 className='h-full w-full object-cover'
                                                 draggable={false}
@@ -105,7 +95,7 @@ export default function BinderSearchTile({ binder, showMatchInfo = true }: Props
                                     <div className='min-w-0'>
                                         <div className='flex items-center space-x-1 truncate text-sm font-medium'>
                                             <span className='truncate'>{ownerName}</span>
-                                            {binder.owner.isverified && (
+                                            {binder.users.isverified && (
                                                 <BadgeCheckIcon
                                                     className='text-blue-500'
                                                     size={16}
@@ -115,7 +105,7 @@ export default function BinderSearchTile({ binder, showMatchInfo = true }: Props
                                         <div className='flex items-center gap-1 truncate text-xs text-muted-foreground'>
                                             <MapPin size={12} />
                                             <span className='truncate'>
-                                                {binder.owner.location ?? 'No location'}
+                                                {binder.users.location ?? 'No location'}
                                             </span>
                                         </div>
                                     </div>

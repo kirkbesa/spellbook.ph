@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,24}$/
-const API_BASE = import.meta.env.VITE_API_BASE ?? '' // leave empty if you proxy /api
+const API_BASE = import.meta.env.VITE_API_BASE ?? ''
 
 export function useUsernameAvailability(username: string) {
     const value = username.trim()

@@ -435,6 +435,68 @@ router.get(
     })
 )
 
+// GET /api/binders/latest
+router.get(
+    '/latest',
+    asyncHandler(async (req, res) => {
+        const { limit = 10, filterBy = 'newly_created' } = req.query
+
+        // Get date 24 hours ago to filter by "newly added cards"
+        const sinceDate = new Date(Date.now() - 24 * 60 * 60 * 1000) // 24 hours ago
+
+        try {
+            // Fetch binders based on filter type
+            let bindersQuery = req.supabase
+                .from('binders')
+                .select(
+                    'id, name, image_url, privacy, description, owner_id, created_at, updated_at, ' +
+                        'users!inner(id, username, first_name, last_name, image_url, isverified, reputation, location), ' +
+                        'binder_cards!inner(binder_id, updated_at)'
+                )
+
+            // Filter for "newly_created"
+            if (filterBy === 'newly_created') {
+                bindersQuery = bindersQuery.gte('created_at', sinceDate.toISOString())
+            } else if (filterBy === 'with_new_cards') {
+                // Filter for binders with cards added/updated within the last 24 hours
+                bindersQuery = bindersQuery.gte('binder_cards.updated_at', sinceDate.toISOString())
+            }
+
+            const { data: binders, error } = await bindersQuery.limit(limit)
+
+            // Fetch Total Binder Counts using their ID
+            const binderIds = binders.map((binder) => binder.id)
+            const { data: binderCardCounts, error: countError } = await req.supabase
+                .from('binder_cards')
+                .select('binder_id, quantity')
+                .in('binder_id', binderIds)
+                .eq('listing_status', 'available')
+
+            if (countError) {
+                console.error('Error fetching binder card counts:', countError)
+            }
+            const binderTotalCounts = new Map()
+            binderCardCounts?.forEach((row) => {
+                const current = binderTotalCounts.get(row.binder_id) || 0
+                binderTotalCounts.set(row.binder_id, current + row.quantity)
+            })
+            binders.forEach((binder) => {
+                binder.card_count = binderTotalCounts.get(binder.id) || 0
+            })
+
+            if (error) {
+                console.error('Error fetching binders:', error)
+                return res.status(400).json({ error: error.message })
+            }
+
+            res.json({ data: binders })
+        } catch (error) {
+            console.error('Error in latest binders route:', error)
+            res.status(500).json({ error: 'Internal server error' })
+        }
+    })
+)
+
 // Reads public, writes auth
 const crud = makeCrudRouter('binders', { orderBy: 'created_at', publicRead: true })
 router.use('/', crud)

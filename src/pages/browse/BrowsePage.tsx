@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { useState } from 'react'
 import BulkSearchModal from './components/BulkSearchModal'
 import { Badge } from '@/components/ui/badge'
+import LatestBinders from './components/LatestBinders/LatestBinders'
 
 export type Owner = {
     id: string
@@ -103,7 +104,7 @@ const BrowsePage = () => {
 
             <div className='flex flex-col gap-2 border rounded-lg p-4'>
                 <h2 className='text-sm font-semibold'>Looking for a specific card?</h2>
-                <div className='flex justify-between gap-4'>
+                <div className='flex flex-col md:flex-row justify-between gap-4'>
                     {/* Single Search */}
                     <Input
                         placeholder='ex. Cyclonic Rift'
@@ -175,8 +176,9 @@ const BrowsePage = () => {
             {/* Search Results */}
             {searchResults.length > 0 && (
                 <div className='flex flex-col gap-4'>
-                    <h2 className='text-lg font-semibold'>
-                        Search Results: {searchResults.length} binders found
+                    <h2 className='text-sm font-semibold'>
+                        Search Results: {searchResults.length}{' '}
+                        {searchResults.length > 1 ? 'binders' : 'binder'} found
                     </h2>
                     <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'>
                         {searchResults.map((binder) => (
@@ -193,18 +195,6 @@ const BrowsePage = () => {
                 </div>
             )}
 
-            {/* Only show these sections when no active search */}
-            {!hasActiveSearch && (
-                <>
-                    {/* <h1 className='text-2xl font-bold'>Popular Binders</h1> */}
-                    {/* soon: popular binders (many offers/orders) */}
-                    {/* <h1 className='text-2xl font-bold'>Binders from people you follow</h1> */}
-                    {/* soon: follow system */}
-                    {/* <h1 className='text-2xl font-bold'>Latest Binders</h1> */}
-                    {/* soon: newly updated binders */}
-                </>
-            )}
-
             {showBulkSearchModal && (
                 <BulkSearchModal
                     open={showBulkSearchModal}
@@ -212,6 +202,8 @@ const BrowsePage = () => {
                     onResults={handleBulkSearchResults}
                 />
             )}
+
+            <LatestBinders />
         </div>
     )
 }
