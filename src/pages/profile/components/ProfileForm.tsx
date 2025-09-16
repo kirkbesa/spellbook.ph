@@ -29,6 +29,9 @@ export default function ProfileForm({
 }: Props) {
     const usernameValid = form.username ? USERNAME_RE.test(form.username.trim()) : true
 
+    const hasUsername =
+        form.username !== null || form.username !== undefined || form.username !== ''
+
     return (
         <Card>
             <form onSubmit={onSave}>
@@ -38,18 +41,23 @@ export default function ProfileForm({
                 <CardContent className='space-y-6'>
                     <div className='grid gap-4 sm:grid-cols-2 pt-4'>
                         <div className='space-y-2'>
-                            <Label htmlFor='username'>Username</Label>
+                            <Label htmlFor='username'>
+                                Username{' '}
+                                <span className='text-xs text-muted-foreground font-normal'>
+                                    (cannot be changed once set)
+                                </span>
+                            </Label>
                             <Input
                                 id='username'
                                 value={form.username}
                                 onChange={onChange('username')}
-                                disabled={loading || updating}
+                                disabled={loading || updating || hasUsername}
                                 className={
-                                    form.username
-                                        ? usernameValid
-                                            ? 'border-green-500 focus-visible:ring-green-500'
-                                            : 'border-red-500 focus-visible:ring-red-500'
-                                        : undefined
+                                    usernameValid && !form.username
+                                        ? 'border-green-500 focus-visible:ring-green-500'
+                                        : form.username
+                                          ? 'border-neutral-500 focus-visible:ring-neutral-500'
+                                          : 'border-red-500 focus-visible:ring-red-500'
                                 }
                                 placeholder='e.g. faeriemastermind'
                             />

@@ -1,7 +1,7 @@
 // src/pages/binders/components/BinderHeader.tsx
 import * as React from 'react'
 import { Badge } from '@/components/ui/badge'
-import { BadgeCheckIcon, MapPin, MessageSquare } from 'lucide-react'
+import { BadgeCheckIcon, MapPin, MessageSquare, User } from 'lucide-react'
 import type { Binder } from '@/hooks/binders/types'
 import { usePublicUser } from '@/hooks/users/usePublicUser'
 import { Link, useNavigate } from '@tanstack/react-router'
@@ -115,12 +115,12 @@ export default function BinderHeader({ binder, isOwner }: Props) {
                                             <BadgeCheckIcon className='text-blue-500' size={16} />
                                         )}
                                     </div>
-                                    {owner.location && (
-                                        <div className='flex items-center gap-1 truncate text-xs text-muted-foreground'>
-                                            <MapPin size={12} />
-                                            <span className='truncate'>{owner.location}</span>
-                                        </div>
-                                    )}
+                                    <div className='flex items-center gap-1 truncate text-xs text-muted-foreground'>
+                                        <MapPin size={12} />
+                                        <span className='truncate'>
+                                            {owner.location ?? 'No location'}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </Link>
@@ -133,7 +133,19 @@ export default function BinderHeader({ binder, isOwner }: Props) {
                     )}
 
                     {!isOwner && (
-                        <div className='sm:ml-auto'>
+                        <div className='sm:ml-auto gap-2 flex'>
+                            <Button
+                                onClick={() => {
+                                    navigate({ to: '/u/$userId', params: { userId: owner!.id } })
+                                }}
+                                disabled={starting || !owner}
+                                variant={'secondary'}
+                                title={`View owner's profile`}
+                                className='inline-flex items-center gap-2'
+                            >
+                                <User size={16} />
+                                <span className='hidden sm:inline'>View Profile</span>
+                            </Button>
                             <Button
                                 onClick={onMessage}
                                 disabled={starting || !owner}

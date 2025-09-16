@@ -28,7 +28,9 @@ router.get(
 
         const { data, error } = await admin
             .from('users')
-            .select('id, username, first_name, last_name, location, image_url, isverified')
+            .select(
+                'id, username, first_name, last_name, location, image_url, isverified, reputation'
+            )
             .eq('id', id)
             .maybeSingle()
 

@@ -1,10 +1,13 @@
-import * as React from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { MapPin, BadgeCheck, MessageSquare } from 'lucide-react'
+import { MapPin, MessageCircleWarning, MessageSquare, Star } from 'lucide-react'
 import { startConversationByUsername } from '@/hooks/chat/useStartConversation'
 import { toast } from 'sonner'
+import VerifiedBadge from '@/components/layout/VerifiedBadge'
+import PublicReviews from './components/PublicReviews'
+import RateModal from './components/RateModal'
+// import ReportModal from './components/ReportModal' TODO: Reporting Feature
+import { useState } from 'react'
 
 type Profile = {
     id: string
@@ -14,6 +17,7 @@ type Profile = {
     location: string | null
     image_url: string | null
     isverified: boolean | null
+    reputation: number
 }
 
 type BinderSummary = {
@@ -40,12 +44,11 @@ export default function PublicUserProfilePage({
     currentUserId: string
 }) {
     const navigate = useNavigate()
-    const fullName = React.useMemo(() => {
-        const first = profile.first_name ?? ''
-        const last = profile.last_name ?? ''
-        const full = [first, last].filter(Boolean).join(' ')
-        return full || profile.username || '—'
-    }, [profile])
+
+    const displayName = [profile.first_name ?? '', profile.last_name ?? '']
+        .filter(Boolean)
+        .join(' ')
+    const nameOrUsername = (displayName || profile.username || '—').trim()
 
     const isMe = currentUserId === profile.id
     const isVerified = !!profile.isverified
@@ -60,6 +63,10 @@ export default function PublicUserProfilePage({
         }
     }
 
+    const [isRateModalOpen, setIsRateModalOpen] = useState<boolean>(false)
+    // Todo: Reporting Feature
+    // const [isReportModalOpen, setIsReportModalOpen] = useState<boolean>(false)
+
     return (
         <div className='mx-auto w-full max-w-6xl space-y-6'>
             {/* Header */}
@@ -69,7 +76,7 @@ export default function PublicUserProfilePage({
                         {profile.image_url && (
                             <img
                                 src={profile.image_url}
-                                alt={`${fullName} avatar`}
+                                alt={`${nameOrUsername} avatar`}
                                 className='h-full w-full object-cover'
                                 onError={(e) =>
                                     ((e.currentTarget as HTMLImageElement).style.display = 'none')
@@ -80,39 +87,57 @@ export default function PublicUserProfilePage({
 
                     <div className='min-w-0 flex-1'>
                         <div className='flex items-center gap-2'>
-                            <h1 className='truncate text-xl font-semibold'>{fullName}</h1>
-                            {!isVerified && (
-                                <>
-                                    <Badge className='hidden sm:flex gap-1 bg-blue-500 text-white dark:bg-blue-600'>
-                                        <BadgeCheck size={14} />
-                                        <span className=''>Verified</span>
-                                    </Badge>
-                                    <BadgeCheck className='w-5 h-5 text-blue-500 sm:hidden' />
-                                </>
-                            )}
+                            <h1 className='truncate text-xl font-semibold'>{nameOrUsername}</h1>
+                            <VerifiedBadge isVerified={isVerified} />
                         </div>
-                        {profile.username && (
-                            <div className='text-sm text-muted-foreground'>@{profile.username}</div>
-                        )}
-                        {profile.location && (
-                            <div className='mt-1 flex items-center gap-1 text-xs text-muted-foreground'>
-                                <MapPin size={12} />
-                                <span className='truncate'>{profile.location}</span>
-                            </div>
-                        )}
+                        <div className='mt-1 flex md:flex-row flex-col md:items-center gap-1 md:gap-4 text-sm text-muted-foreground'>
+                            {profile.username && <span>@{profile.username}</span>}
+                            <span className='inline-flex items-center gap-1'>
+                                <MapPin size={14} />
+                                {profile.location ?? 'No Location'}
+                            </span>
+                            <span
+                                className={`inline-flex items-center gap-1 ${profile.reputation >= 0 ? 'text-amber-500' : 'text-red-500'}`}
+                            >
+                                <Star size={14} />
+                                {profile.reputation ?? 0} rep
+                            </span>
+                        </div>
                     </div>
 
                     {!isMe && (
-                        <div className='sm:ml-auto'>
-                            <Button
-                                onClick={onMessage}
-                                variant={'secondary'}
-                                className='inline-flex items-center gap-2'
-                            >
-                                <MessageSquare size={16} />
-                                <span className='hidden sm:flex'>Message</span>
-                            </Button>
-                        </div>
+                        <>
+                            <div className='sm:ml-auto'>
+                                <Button
+                                    onClick={onMessage}
+                                    variant={'secondary'}
+                                    className='inline-flex items-center gap-2'
+                                >
+                                    <MessageSquare size={16} />
+                                    <span className='hidden sm:flex'>Message</span>
+                                </Button>
+                            </div>
+                            <div className='sm:ml-auto'>
+                                <Button
+                                    onClick={() => {
+                                        setIsRateModalOpen(true)
+                                    }}
+                                    className='inline-flex items-center gap-2 text-amber-600 bg-amber-200 hover:bg-amber-300 hover:text-amber-700'
+                                >
+                                    <Star size={16} />
+                                    <span className='hidden sm:flex'>Rate</span>
+                                </Button>
+                            </div>
+                            <div className='sm:ml-auto'>
+                                <Button
+                                    onClick={() => {}}
+                                    className='inline-flex items-center gap-2 text-white bg-red-500 hover:bg-red-700'
+                                >
+                                    <MessageCircleWarning size={16} />
+                                    <span className='hidden sm:flex'>Report</span>
+                                </Button>
+                            </div>
+                        </>
                     )}
                 </div>
             </section>
@@ -176,6 +201,19 @@ export default function PublicUserProfilePage({
                     )}
                 </div>
             </section>
+
+            {/* Public Reviews */}
+            <PublicReviews user_id={profile.id} />
+
+            {isRateModalOpen && (
+                <RateModal
+                    reviewer_id={currentUserId}
+                    reviewee_id={profile.id}
+                    setOpen={setIsRateModalOpen}
+                />
+            )}
+            {/* TODO: Reporting feature */}
+            {/* {isReportModalOpen && <ReportModal />} */}
         </div>
     )
 }

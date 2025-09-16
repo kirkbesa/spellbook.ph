@@ -1,9 +1,10 @@
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { Mail, MapPin, ShieldCheck, ShieldX, Star } from 'lucide-react'
+import { Mail, MapPin, ShieldX, Star } from 'lucide-react'
 import type { Profile } from '../types'
 import AvatarUploader from './AvatarUploader'
 import { toast } from 'sonner'
+import VerifiedBadge from '@/components/layout/VerifiedBadge'
 
 type Props = {
     profile: Profile
@@ -37,10 +38,7 @@ export default function ProfileHeader({ profile, onAvatarUploaded }: Props) {
                     <div className='flex flex-wrap items-center gap-2'>
                         <h1 className='text-xl font-semibold'>{nameOrUsername}</h1>
                         {verified ? (
-                            <Badge variant='secondary' className='gap-1 text-blue-500'>
-                                <ShieldCheck size={14} />
-                                Verified
-                            </Badge>
+                            <VerifiedBadge isVerified={verified} />
                         ) : (
                             <Badge variant='secondary' className='gap-1'>
                                 <ShieldX size={14} />
@@ -62,7 +60,9 @@ export default function ProfileHeader({ profile, onAvatarUploaded }: Props) {
                                 {profile.location}
                             </span>
                         )}
-                        <span className='inline-flex items-center gap-1'>
+                        <span
+                            className={`inline-flex items-center gap-1 ${(profile.reputation ?? 0) >= 0 ? 'text-amber-500' : 'text-red-500'}`}
+                        >
                             <Star size={14} />
                             {profile.reputation ?? 0} rep
                         </span>
